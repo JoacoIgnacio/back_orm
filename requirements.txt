@@ -1,0 +1,7 @@
+pymysql
+flask
+flask_cors
+imutils
+qrcode
+numpy
+opencv-python
