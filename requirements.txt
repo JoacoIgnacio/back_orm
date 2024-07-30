@@ -1,7 +1,8 @@
-pymysql
-flask
-flask_cors
-imutils
-qrcode
-numpy
-opencv-python
+pymysql==1.0.2
+flask==2.2.5
+flask-cors==3.0.10
+imutils==0.5.4
+qrcode==7.4.2
+numpy==1.26.1
+opencv-python==4.8.1.78
+gunicorn==22.0.0
