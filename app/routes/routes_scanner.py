@@ -1,3 +1,4 @@
+import json
 from flask import Blueprint, request, jsonify
 from app.controllers.scanner_controller import (
     process_image,
@@ -18,18 +19,17 @@ def scanner():
             resolver_prueba = solve_test(request_data['ANSWER_KEY'], request_data['alternativas'])
             nota = resolver_prueba.get('nota', 0.0)
             imagen = resolver_prueba.get('image')
+            respuestas_alumno = json.dumps(resolver_prueba.get('respuestas_marcadas'))
+            
             data_alumno = request_data['data_alumno']
-            
-            agregar_respuestas_alumnos(request_data['ANSWER_KEY'])
-            
-            id_hoja_de_respuestas = request_data.get('id_hoja_de_respuestas')
-            id_curso = data_alumno.get('id_curso')
-            id_alumno = data_alumno.get('id_alumno')
+            asignatura_id = request_data['id']
+        
+            alumno_id = data_alumno[0]
             
             prueba = {
-                'id_alumno': id_alumno,
-                'id_curso': id_curso,
-                'id_hoja_de_respuestas': id_hoja_de_respuestas,
+                'asignatura_id': asignatura_id, 
+                'alumno_id': alumno_id,
+                'respuestas': respuestas_alumno,
                 'nota': nota,
                 'activo': True  # Puedes ajustar esto según tus necesidades
             }

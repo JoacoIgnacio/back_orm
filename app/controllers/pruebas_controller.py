@@ -5,21 +5,9 @@ def crear_prueba(prueba):
     try:
         conexion = obtener_conexion()
         with conexion.cursor() as cursor:
-            # Verificar si el id_alumno existe en la tabla alumnos
-            cursor.execute("SELECT id FROM alumnos WHERE id = %s", (prueba['id_alumno'],))
-            id_alumno_existente = cursor.fetchone()
-
-            # Verificar si el id_curso existe en la tabla cursos
-            cursor.execute("SELECT id FROM cursos WHERE id = %s", (prueba['id_curso'],))
-            id_curso_existente = cursor.fetchone()
-
-            if id_alumno_existente and id_curso_existente:
-                # Insertar nueva prueba si ambos existen
-                sql = "INSERT INTO pruebas (nota, activo, id_hoja_de_respuestas, id_curso, id_alumno) VALUES (%s, %s, %s, %s, %s)"
-                cursor.execute(sql, (prueba['nota'], prueba['activo'], prueba['id_hoja_de_respuestas'], prueba['id_curso'], prueba['id_alumno']))
-                conexion.commit()
-            else:
-                print(f"El id_alumno {prueba['id_alumno']} o el id_curso {prueba['id_curso']} no existen en las tablas correspondientes.")
+            sql = "INSERT INTO pruebas (nota, respuestas, activo, asignatura_id, alumno_id) VALUES (%s, %s, %s, %s, %s)"
+            cursor.execute(sql, (prueba['nota'], prueba['respuestas'], prueba['activo'], prueba['asignatura_id'], prueba['alumno_id']))
+            conexion.commit()
     except Exception as err:
         print('Error al crear prueba:', err)
     finally:
@@ -43,20 +31,33 @@ def obtener_pruebas():
     return pruebas
 
 def obtener_prueba_por_id(prueba_id):
-    prueba = None
+    resultados = []
     try:
         conexion = obtener_conexion()
         with conexion.cursor() as cursor:
-            # Obtener una prueba por ID
-            sql = "SELECT * FROM pruebas WHERE id = %s"
-            cursor.execute(sql, (prueba_id,))
-            prueba = cursor.fetchone()
+
+            cursor.execute("SELECT * FROM pruebas WHERE asignatura_id = %s", (prueba_id,))
+            pruebas = cursor.fetchall()
+            
+            for prueba in pruebas:
+                cursor.execute("SELECT * FROM alumnos WHERE id = %s", (prueba[5],))
+                alumnos = cursor.fetchall()
+                
+                for alumno in alumnos:
+                    resultado = {
+                        "nombre": f"{alumno[1]} {alumno[2]}",
+                        "nota": prueba[1],
+                        "respuesta": prueba[2]
+                    }
+                    resultados.append(resultado)
+            
+        
     except Exception as err:
         print(f'Error al obtener prueba con ID {prueba_id}:', err)
     finally:
         if conexion:
             conexion.close()
-    return prueba
+    return resultados
 
 def actualizar_prueba(prueba_id, nuevos_datos):
     try:

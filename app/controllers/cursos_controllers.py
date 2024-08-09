@@ -11,20 +11,14 @@ def crear_curso(curso):
             conexion.commit()
 
             # Obtener el ID del curso recién insertado
-            id_curso = cursor.lastrowid
-
-            # Insertar en la tabla de relación cursos_alumnos
-            # for id_alumno in curso['id_alumnos']:
-            #     sql_relacion = "INSERT INTO cursos_alumnos (id_curso, id_alumno) VALUES (%s, %s)"
-            #     cursor.execute(sql_relacion, (id_curso, id_alumno))
-            #     conexion.commit()
+            curso_id = cursor.lastrowid
 
     except Exception as err:
         print('Error al crear curso:', err)
     finally:
         if conexion:
             conexion.close()
-    return id_curso
+    return curso_id
 
 def obtener_cursos_por_usuario(user_id):
     cursos = []

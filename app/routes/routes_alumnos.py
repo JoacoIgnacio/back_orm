@@ -73,10 +73,10 @@ def eliminar_alumno_por_id(alumno_id):
         return jsonify({"error": str(err)}), 500
  
 
-@alumnos_db_bp.route('/eliminaralumnosporcurso/<int:id_curso>', methods=['DELETE'])
-def eliminar_alumnos_por_curso_endpoint(id_curso):
+@alumnos_db_bp.route('/eliminaralumnosporcurso/<int:curso_id>', methods=['DELETE'])
+def eliminar_alumnos_por_curso_endpoint(curso_id):
     try:
-        eliminar_alumnos_por_curso(id_curso)
+        eliminar_alumnos_por_curso(curso_id)
         return jsonify({"message": "Alumnos eliminados correctamente"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500

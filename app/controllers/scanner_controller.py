@@ -183,6 +183,7 @@ def solve_test(ANSWER_KEY, alternativas):
             incorrect = 0
             score = 0.0
             total_questions = len(questionCnts) // int(alternativas)  # Total de preguntas
+            respuestas_marcadas = {}
 
             # Evaluar cada pregunta
             for (q, i) in enumerate(np.arange(0, len(questionCnts), int(alternativas))):
@@ -201,6 +202,9 @@ def solve_test(ANSWER_KEY, alternativas):
                     if bubbled is None and total > UMBRAL_PIXELES:
                         bubbled = (total, j)
                         answered = True
+                    
+                if answered:
+                    respuestas_marcadas[q + 1] = bubbled[1]
                 
                 k = ANSWER_KEY[q]
 
@@ -233,7 +237,7 @@ def solve_test(ANSWER_KEY, alternativas):
         _, paper_encoded = cv2.imencode('.png', paper)
         paper_base64 = base64.b64encode(paper_encoded.tobytes()).decode('utf-8')
         paper_base64_with_prefix = f'data:image/png;base64,{paper_base64}'
-        return {'image': paper_base64_with_prefix, 'nota': nota}
+        return {'image': paper_base64_with_prefix, 'nota': nota, 'respuestas_marcadas': respuestas_marcadas}
         
     else:
         print("No se encontró un contorno cuadrilátero para el papel del examen.")

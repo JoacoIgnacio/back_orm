@@ -16,8 +16,8 @@ cursos_db_bp = Blueprint('cursos_db', __name__)
 def crear_nuevo_curso():
     try:
         datos_curso = request.json
-        id_curso = crear_curso(datos_curso)
-        return jsonify({"status": True, "mensaje": "Curso creado exitosamente", 'id_curso': id_curso}), 201
+        curso_id = crear_curso(datos_curso)
+        return jsonify({"status": True, "mensaje": "Curso creado exitosamente", 'curso_id': curso_id}), 201
     except Exception as err:
         return jsonify({"status": False, "error": str(err)}), 500
 

@@ -26,11 +26,11 @@ def obtener_todas_las_pruebas():
 @pruebas_db_bp.route('/pruebas/<int:prueba_id>', methods=['GET'])
 def obtener_prueba_por_id_route(prueba_id):
     try:
-        prueba = obtener_prueba_por_id(prueba_id)
-        if prueba:
-            return jsonify(prueba), 200
+        pruebas = obtener_prueba_por_id(prueba_id)
+        if pruebas:
+            return jsonify({"status": True, "pruebas": pruebas}), 200
         else:
-            return jsonify({"mensaje": "Prueba no encontrada"}), 404
+            return jsonify({"status": False, "mensaje": "Prueba no encontrada"}), 404
     except Exception as err:
         return jsonify({"error": str(err)}), 500
 
