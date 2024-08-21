@@ -6,6 +6,7 @@ from app.routes.routes_pruebas import pruebas_db_bp
 from app.routes.routes_alumnos import alumnos_db_bp
 from app.routes.routes_cursos import cursos_db_bp
 from app.routes.routes_scanner import scanner_db_bp
+from app.routes.routes_formato import formato_db_bp
 app = Flask(__name__)
 
 # Configuración de la aplicación, si es necesario
@@ -18,6 +19,7 @@ app.register_blueprint(pruebas_db_bp)
 app.register_blueprint(alumnos_db_bp)
 app.register_blueprint(cursos_db_bp)
 app.register_blueprint(scanner_db_bp)
+app.register_blueprint(formato_db_bp)
 
 
 # Configuración de CORS

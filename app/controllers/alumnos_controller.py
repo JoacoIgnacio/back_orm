@@ -53,7 +53,6 @@ def obtener_alumnos_por_curso(curso_id):
             sql = "SELECT * FROM alumnos WHERE curso_id = %s"
             cursor.execute(sql, (curso_id,))
             alumnos = cursor.fetchall()
-        print(alumnos)
         return alumnos
     except Exception as err:
         print(f'Error al obtener alumnos por curso {curso_id}: {err}')
@@ -89,21 +88,9 @@ def actualizar_alumno(alumno_id, nuevos_datos):
             # Actualizar un alumno por ID
             sql = "UPDATE alumnos SET nombre = %s, apellido = %s, QR = %s, curso_id = %s WHERE id = %s"
 
-            # Genera un nuevo QR
-            nuevo_qr_info = f"nombre: {nuevos_datos['nombre']}\napellido: {nuevos_datos['apellido']}\ncurso_id: {curso_id_actual}\nalumno_id: {alumno_id}"
-            nuevo_qr = generar_qr_imagen(
-                nuevos_datos['nombre'],
-                nuevos_datos['apellido'],
-                nuevo_qr_info
-            )
-
-            # Extrae la ruta del QR del diccionario
-            nuevo_qr_ruta = nuevo_qr.get('ruta_qr', '')
-
             cursor.execute(sql, (
                 nuevos_datos['nombre'],
                 nuevos_datos['apellido'],
-                nuevo_qr_ruta,  # Pasa solo la ruta del QR, no el diccionario completo
                 curso_id_actual,  # Usa el ID del curso actual
                 alumno_id
             ))

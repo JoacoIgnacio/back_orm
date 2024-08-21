@@ -74,6 +74,28 @@ def obtener_curso_por_id(curso_id):
             conexion.close()
     return curso
 
+def obtener_curso_por_nombre(nombre):
+    curso = None
+    try:
+        conexion = obtener_conexion()
+        with conexion.cursor() as cursor:
+            # Obtener un curso por ID
+            sql = "SELECT * FROM cursos WHERE curso = %s"
+            cursor.execute(sql, (nombre,))
+            curso = cursor.fetchone()  # Esto ya será un diccionario
+            curso = {
+                "id": curso[0],
+                "curso": curso[1],
+                "activo": curso[2],
+                "user_id": curso[3]
+            }
+    except Exception as err:
+        print(f'Error al obtener curso con ID {curso}:', err)
+    finally:
+        if conexion:
+            conexion.close()
+    return curso
+
 def actualizar_curso(curso_id, nuevos_datos):
     try:
         conexion = obtener_conexion()
