@@ -40,10 +40,11 @@ def crear_formato(curso, alternativas, asignatura, num_preguntas):
         # Crear una imagen nueva en formato carta con fondo blanco
         imagen = Image.new("RGBA", (ancho_imagen, alto_imagen), color_fondo)
         dibujar = ImageDraw.Draw(imagen)
+        
+        font_path = os.path.join(os.getcwd(), "fonts", "Lato-Regular.ttf")
 
-        # Establecer la fuente (puedes utilizar una fuente TrueType .ttf)
-        fuente = ImageFont.truetype("arial.ttf", 60)  # Tamaño de fuente 4 veces mayor
-        fuente_labels = ImageFont.truetype("arial.ttf", 80)
+        fuente = ImageFont.truetype(font_path, 60)
+        fuente_labels = ImageFont.truetype(font_path, 80)
 
         # Dibujar etiquetas de nombre y apellido
         dibujar.text((margen_izquierdo, 400), "Nombre:", fill=color_texto, font=fuente_labels)
@@ -165,11 +166,8 @@ def agregar_qr_alumno(alumnos, curso, asignatura, ruta_formato):
                 # Pegar el código QR en la imagen principal
                 imagen.paste(qr_img, (qr_x, qr_y))
                 
-                # Configurar la fuente para el texto
-                try:
-                    fuente_labels = ImageFont.truetype("arial.ttf", 20)
-                except IOError:
-                    fuente_labels = ImageFont.load_default()
+                font_path = os.path.join(os.getcwd(), "fonts", "Lato-Regular.ttf")
+                fuente_labels = ImageFont.truetype(font_path, 20)
                 
                 # Escribir el nombre y apellido del alumno en la imagen
                 dibujar.text((200, 100), alumno['nombre'], fill="black", font=fuente_labels)
@@ -182,8 +180,7 @@ def agregar_qr_alumno(alumnos, curso, asignatura, ruta_formato):
                 print(f"Formato guardado para {alumno['nombre']} {alumno['apellido']} en {output_path}")
             else:
                 print(f"La imagen ya existe: {output_path}")
-
-        return f"alumnos/{curso}/{asignatura}"
+        return True
     except Exception as err:
         print(f'Error al crear el formato: {err}')
-        return ''
+        return False
