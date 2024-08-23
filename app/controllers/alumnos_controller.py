@@ -2,7 +2,6 @@ from app.BD.conexion import obtener_conexion
 from flask import jsonify
 
 def crear_alumno(alumno):
-    qr_info = None
     try:
         with obtener_conexion() as conexion:
             with conexion.cursor() as cursor:
@@ -13,8 +12,18 @@ def crear_alumno(alumno):
                     alumno['apellido'],
                     alumno['curso_id']
                 ))
+                
+                alumno_id = cursor.lastrowid
             # Confirmar la transacción
             conexion.commit()
+            
+            alumno_creado = {
+                'id': alumno_id,
+                'nombre': alumno['nombre'],
+                'apellido': alumno['apellido'],
+                'curso_id': alumno['curso_id']
+            }
+            return alumno_creado
 
     except Exception as err:
         print(f'Error al crear alumno: {err}')
@@ -23,8 +32,7 @@ def crear_alumno(alumno):
                 conexion.rollback()
         except Exception as rollback_err:
             print(f'Error al hacer rollback: {rollback_err}')
-    
-    return {"nombre": alumno['nombre'], "apellido": alumno['apellido'], "curso_id": alumno['curso_id']}
+        return False
 
 
 
@@ -86,7 +94,7 @@ def actualizar_alumno(alumno_id, nuevos_datos):
             curso_id_actual = cursor.fetchone()[0]
 
             # Actualizar un alumno por ID
-            sql = "UPDATE alumnos SET nombre = %s, apellido = %s, QR = %s, curso_id = %s WHERE id = %s"
+            sql = "UPDATE alumnos SET nombre = %s, apellido = %s, curso_id = %s WHERE id = %s"
 
             cursor.execute(sql, (
                 nuevos_datos['nombre'],

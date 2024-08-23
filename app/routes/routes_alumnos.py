@@ -57,7 +57,6 @@ def obtener_alumno_por_id_route(alumno_id):
 def actualizar_alumno_por_id(alumno_id):
     try:
         nuevos_datos = request.json
-        print('Datos recibidos:', nuevos_datos)
         actualizar_alumno(alumno_id, nuevos_datos)
         return jsonify({"mensaje": "Alumno actualizado exitosamente"}), 200
     except Exception as err:
