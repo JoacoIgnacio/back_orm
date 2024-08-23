@@ -61,33 +61,40 @@ def descargar_imagenes_alumnos_route(curso, asignatura):
     except Exception as err:
         return jsonify({"status": False, "error": str(err)}), 404
     
-@formato_db_bp.route('/alumnos/<curso>/<asignatura>/generarFormatos', methods=['GET'])
+@formato_db_bp.route('/formato/<curso>/<asignatura>/generarFormatos', methods=['GET'])
 def generar_formato_alumnos_route(curso, asignatura):
     try:
         resultados = []
         curso = obtener_curso_por_nombre(curso)
-        if curso:
-            asignatura = obtener_asignaturas_por_nombre(asignatura)
-            if asignatura: 
-                alumnos = obtener_alumnos_por_curso(curso['id'])
-                if alumnos:
-                    for alumno in alumnos:
-                        data_alumnos = {'id': alumno[0], 'nombre': alumno[1], 'apellido': alumno[2], 'curso_id': alumno[3], 'asignatura': asignatura['id']}
-                        resultados.append(data_alumnos)
-                    if resultados:
-                        result_qr_alumnos = agregar_qr_alumno(resultados, curso['curso'], asignatura['asignatura'], asignatura['ruta_formato'])
-                        if result_qr_alumnos : 
-                            return jsonify({"status": True, "mensaje": "Hoja de respuestas creada exitosamente", "imagenes": result_qr_alumnos}), 201
-                        else:
-                            return jsonify({"status": False, "mensaje": "No se pudo crear la Hoja de respuestas exitosamente"}), 500
-                else:
-                    return jsonify({"status": False, "mensaje": "No se encontro ningun alumnos en el curso"}), 500
-            else:
-                return jsonify({"status": False, "mensaje": "No se encontro ninguna asignatura"}), 500
-        else:
-            return jsonify({"status": False, "mensaje": "No se encontro ningun curso"}), 500
+        if not curso:
+            return jsonify({"status": False, "mensaje": "No se encontró ningún curso"}), 404
+
+        asignatura = obtener_asignaturas_por_nombre(asignatura)
+        if not asignatura:
+            return jsonify({"status": False, "mensaje": "No se encontró ninguna asignatura"}), 404
+
+        alumnos = obtener_alumnos_por_curso(curso['id'])
+        if not alumnos:
+            return jsonify({"status": False, "mensaje": "No se encontró ningún alumno en el curso"}), 404
+
+        for alumno in alumnos:
+            data_alumnos = {
+                'id': alumno[0],
+                'nombre': alumno[1],
+                'apellido': alumno[2],
+                'curso_id': alumno[3],
+                'asignatura': asignatura['id']
+            }
+            resultados.append(data_alumnos)
+
+        result_qr_alumnos = agregar_qr_alumno(resultados, curso['curso'], asignatura['asignatura'], asignatura['ruta_formato'])
+        if not result_qr_alumnos:
+            return jsonify({"status": False, "mensaje": "No se pudo crear la hoja de respuestas"}), 500
+
+        return jsonify({"status": True, "mensaje": "Hoja de respuestas creada exitosamente", "imagenes": result_qr_alumnos}), 201
+
     except Exception as err:
-        return jsonify({"status": False, "error": str(err)}), 404
+        return jsonify({"status": False, "error": str(err)}), 500
 
 @formato_db_bp.route('/alumnos/<curso>/<asignatura>/descargarCSV', methods=['GET'])
 def download_alumnos(curso, asignatura):
