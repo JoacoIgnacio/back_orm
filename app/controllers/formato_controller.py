@@ -119,7 +119,7 @@ def crear_formato(curso, alternativas, asignatura, num_preguntas):
         return None
 
 
-def agregar_qr_alumno(alumnos, curso, asignatura, ruta_formato):
+def agregar_qr_alumno(alumnos, curso, asignatura_id, asignatura, ruta_formato):
     try:
         image_directory = os.path.join(os.getcwd(), f'static/formato/{curso}/{asignatura}')
         output_directory = os.path.join(os.getcwd(), f'static/alumnos/{curso}/{asignatura}')
@@ -144,7 +144,7 @@ def agregar_qr_alumno(alumnos, curso, asignatura, ruta_formato):
                 dibujar = ImageDraw.Draw(imagen)
                 
                 # Generar el código QR con la información del alumno
-                qr_info = f"{alumno['id']} {alumno['nombre']} {alumno['apellido']} {alumno['curso_id']} {asignatura}"
+                qr_info = f"{alumno['id']} {alumno['nombre']} {alumno['apellido']} {alumno['curso_id']} {asignatura_id}"
                 qr = qrcode.QRCode(
                     version=1,
                     error_correction=qrcode.constants.ERROR_CORRECT_L,

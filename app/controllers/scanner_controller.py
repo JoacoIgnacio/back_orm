@@ -199,7 +199,7 @@ def solve_test(ANSWER_KEY, alternativas, alumno):
                     if answered:
                         respuestas_marcadas[q + 1] = bubbled[1]
                     
-                    k = ANSWER_KEY_[q]
+                    k = ANSWER_KEY_.get(q, -1)
 
                     # Si no se marcó ninguna respuesta, marcar como incorrecta
                     if not answered:
@@ -214,7 +214,8 @@ def solve_test(ANSWER_KEY, alternativas, alumno):
                         incorrect += 1  # rojo para respuesta incorrecta
 
                     # Dibujar contorno alrededor de la respuesta seleccionada en la imagen original
-                    cv2.drawContours(paper, [cnts[k]], -1, color, 3)
+                    if k != -1 and k < len(cnts):
+                        cv2.drawContours(paper, [cnts[k]], -1, color, 3)
 
                 # Calcular el puntaje final         
                 score = (correct / total_questions) * 100
@@ -226,7 +227,6 @@ def solve_test(ANSWER_KEY, alternativas, alumno):
 
             eliminar_contenido_directorio(f'static/columnas/{alumno}', alumno)
             eliminar_contenido_directorio(f'static/imagen_resultante_{alumno}.png', alumno)
-            # eliminar_contenido_directorio(f'static/{alumno}.png', alumno)
             # Mostrar imágenes
             _, paper_encoded = cv2.imencode('.png', paper)
             paper_base64 = base64.b64encode(paper_encoded.tobytes()).decode('utf-8')
@@ -259,5 +259,5 @@ def eliminar_contenido_directorio(directorio, alumno):
             print(f"Ocurrió un error inesperado: {e}")
     else:
         os.remove(f"static/imagen_resultante_{alumno}.png")
-        # os.remove(f"static/{alumno}.png")
+        os.remove(f"static/{alumno}.png")
         print(f"El archivo '{directorio}' ha sido eliminado.")

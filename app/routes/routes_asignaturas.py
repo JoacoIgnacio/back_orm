@@ -5,8 +5,7 @@ from app.controllers.asignaturas_controller import (
     obtener_asignaturas_por_id,
     actualizar_asignaturas,
     eliminar_asignaturas,
-    obtener_asignaturas_por_curso,
-    obtener_asignaturas_por_nombre
+    obtener_asignaturas_por_curso
 )
 from app.controllers.formato_controller import crear_formato
 from app.controllers.cursos_controllers import obtener_curso_por_id
@@ -49,18 +48,6 @@ def obtener_asignaturas_por_curso_route(curso_id):
     except Exception as err:
         return jsonify({"status": False, "error": str(err)}), 500
     
-    
-# Ruta para obtener una hoja de respuestas por ID
-@asignaturas_db_bp.route('/asignaturaspornombre/<nombre>', methods=['GET'])
-def obtener_asignaturas_por_nombre_route(nombre):
-    try:
-        asignatura = obtener_asignaturas_por_nombre(nombre)
-        if asignatura:
-            return jsonify({"status": True,"mensaje": "Hoja de respuestas encontrada", "asignatura":asignatura}), 200
-        else:
-            return jsonify({"status": False,"mensaje": "Hoja de respuestas no encontrada"}), 404
-    except Exception as err:
-        return jsonify({"status": False, "error": str(err)}), 500
    
 # Ruta para obtener una hoja de respuestas por ID
 @asignaturas_db_bp.route('/asignaturas/<int:asignaturas_id>', methods=['GET'])

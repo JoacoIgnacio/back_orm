@@ -88,13 +88,13 @@ def obtener_asignaturas_por_id(asignaturas_id):
             conexion.close()
     return asignatura
 
-def obtener_asignaturas_por_nombre(nombre):
+def obtener_asignaturas_por_id(id):
     asignatura = None
     try:
         conexion = obtener_conexion()
         with conexion.cursor() as cursor:
-            sql = "SELECT * FROM asignaturas WHERE asignatura = %s"
-            cursor.execute(sql, (nombre,))
+            sql = "SELECT * FROM asignaturas WHERE id = %s"
+            cursor.execute(sql, (id,))
             asignatura = cursor.fetchone()  # Esto ya será un diccionario
             asignatura = {
                 "id": asignatura[0],

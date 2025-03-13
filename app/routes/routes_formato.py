@@ -6,8 +6,8 @@ import zipfile
 from io import StringIO
 from app.controllers.alumnos_controller import obtener_alumnos_por_curso
 from app.controllers.formato_controller import agregar_qr_alumno
-from app.controllers.cursos_controllers import obtener_curso_por_nombre
-from app.controllers.asignaturas_controller import obtener_asignaturas_por_nombre
+from app.controllers.cursos_controllers import obtener_curso_por_id
+from app.controllers.asignaturas_controller import obtener_asignaturas_por_id
 from app.controllers.pruebas_controller import obtener_prueba_por_id
 
 from io import BytesIO
@@ -65,11 +65,11 @@ def descargar_imagenes_alumnos_route(curso, asignatura):
 def generar_formato_alumnos_route(curso, asignatura):
     try:
         resultados = []
-        curso = obtener_curso_por_nombre(curso)
+        curso = obtener_curso_por_id(curso)
         if not curso:
             return jsonify({"status": False, "mensaje": "No se encontró ningún curso"}), 404
 
-        asignatura = obtener_asignaturas_por_nombre(asignatura)
+        asignatura = obtener_asignaturas_por_id(asignatura)
         if not asignatura:
             return jsonify({"status": False, "mensaje": "No se encontró ninguna asignatura"}), 404
 
@@ -87,7 +87,7 @@ def generar_formato_alumnos_route(curso, asignatura):
             }
             resultados.append(data_alumnos)
 
-        result_qr_alumnos = agregar_qr_alumno(resultados, curso['curso'], asignatura['asignatura'], asignatura['ruta_formato'])
+        result_qr_alumnos = agregar_qr_alumno(resultados, curso['curso'], asignatura['id'], asignatura['asignatura'], asignatura['ruta_formato'])
         if not result_qr_alumnos:
             return jsonify({"status": False, "mensaje": "No se pudo crear la hoja de respuestas"}), 500
 
@@ -101,7 +101,7 @@ def download_alumnos(curso, asignatura):
     try:
         print('Iniciando proceso de obtención de pruebas...')
         
-        asignatura = obtener_asignaturas_por_nombre(asignatura)
+        asignatura = obtener_asignaturas_por_id(asignatura)
         if asignatura:
             alumnos = obtener_prueba_por_id(asignatura['id'])
             if alumnos:
