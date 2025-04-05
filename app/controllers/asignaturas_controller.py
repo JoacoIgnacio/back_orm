@@ -71,47 +71,34 @@ def obtener_asignaturas_por_id(asignaturas_id):
         with conexion.cursor() as cursor:
             sql = "SELECT * FROM asignaturas WHERE id = %s"
             cursor.execute(sql, (asignaturas_id,))
-            asignatura = cursor.fetchone()  # Esto ya será un diccionario
-            asignatura = {
+            asignatura = cursor.fetchone()
+            
+            # Verificar si se obtuvo un resultado antes de acceder a los índices
+            if not asignatura:
+                print(f"Error: No se encontró la asignatura con ID {asignaturas_id}")
+                return None
+
+            # Verificar la cantidad de columnas antes de acceder a ellas
+            asignatura_dict = {
                 "id": asignatura[0],
                 "asignatura": asignatura[1],
                 "alternativas": asignatura[2],
-                "preguntas": asignatura[3],
-                "respuestas": asignatura[4],
+                "preguntas": json.loads(asignatura[3]) if asignatura[3] else [],
+                "respuestas": json.loads(asignatura[4]) if asignatura[4] else [],
                 "curso_id": asignatura[5],
-                "ruta_formato": asignatura[6]
+                "ruta_formato": asignatura[6] if len(asignatura) > 6 else None,
+                "total_columnas": asignatura[7] if len(asignatura) > 7 else None
             }
+
     except Exception as err:
         print(f'Error al obtener hoja de respuestas con ID {asignaturas_id}:', err)
-    finally:
-        if conexion:
-            conexion.close()
-    return asignatura
+        return None  # Evita devolver datos corruptos
 
-def obtener_asignaturas_por_id(id):
-    asignatura = None
-    try:
-        conexion = obtener_conexion()
-        with conexion.cursor() as cursor:
-            sql = "SELECT * FROM asignaturas WHERE id = %s"
-            cursor.execute(sql, (id,))
-            asignatura = cursor.fetchone()  # Esto ya será un diccionario
-            asignatura = {
-                "id": asignatura[0],
-                "asignatura": asignatura[1],
-                "alternativas": asignatura[2],
-                "preguntas": asignatura[3],
-                "respuestas": asignatura[4],
-                "curso_id": asignatura[5],
-                "ruta_formato": asignatura[6],
-                "total_columnas": asignatura[7]
-            }
-    except Exception as err:
-        print(f'Error al obtener hoja de respuestas con ID {asignatura}:', err)
     finally:
         if conexion:
             conexion.close()
-    return asignatura
+
+    return asignatura_dict
 
 def actualizar_asignaturas(asignaturas_id, ruta_formato, columnas):
     try:

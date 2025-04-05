@@ -2,7 +2,7 @@ from PIL import Image, ImageDraw, ImageFont
 import os
 from datetime import datetime
 import qrcode
-
+import json
 
 def crear_opciones(alternativas):
     todas_opciones = ['A', 'B', 'C', 'D', 'E']
@@ -95,12 +95,31 @@ def crear_formato(curso, alternativas, asignatura, num_preguntas):
         ancho_rectangulo = (num_columnas * espacio_entre_columnas)
         alto_rectangulo = (preguntas_por_columna * espacio_entre_preguntas)
 
-        # Dibujar el rectángulo alrededor de todas las preguntas
-        coordenadas_rectangulo = [
-            (margen_izquierdo - 30, margen_superior - 100),
-            (margen_izquierdo + ancho_rectangulo, margen_superior + alto_rectangulo)
+               # Coordenadas del área de preguntas
+        x0 = margen_izquierdo - 30
+        y0 = margen_superior - 100
+        x1 = margen_izquierdo + ancho_rectangulo
+        y1 = margen_superior + alto_rectangulo
+
+        # Dibujar contorno más grueso
+        #dibujar.rectangle([(x0, y0), (x1, y1)], outline="black", width=16)
+
+        # Tamaño del marcador
+        marcador = 60
+
+        # Dibujar marcadores guía en cada esquina del área de preguntas
+        esquinas = [
+            (x0 - marcador // 2, y0 - marcador // 2),  # superior izquierda
+            (x1 - marcador // 2, y0 - marcador // 2),  # superior derecha
+            (x0 - marcador // 2, y1 - marcador // 2),  # inferior izquierda
+            (x1 - marcador // 2, y1 - marcador // 2),  # inferior derecha
         ]
-        dibujar.rectangle(coordenadas_rectangulo, outline=color_rectangulo, width=4)  # Dibuja el rectángulo
+        for esquina in esquinas:
+            dibujar.rectangle(
+                [esquina, (esquina[0] + marcador, esquina[1] + marcador)],
+                fill="black"
+            )
+
 
         # Obtener la fecha actual y formatearla
         fecha_actual = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -144,7 +163,14 @@ def agregar_qr_alumno(alumnos, curso, asignatura_id, asignatura, ruta_formato):
                 dibujar = ImageDraw.Draw(imagen)
                 
                 # Generar el código QR con la información del alumno
-                qr_info = f"{alumno['id']} {alumno['nombre']} {alumno['apellido']} {alumno['curso_id']} {asignatura_id}"
+                qr_data = {
+                    "id": alumno["id"],
+                    "nombre": alumno["nombre"],
+                    "apellido": alumno["apellido"],
+                    "curso_id": alumno["curso_id"],
+                    "asignatura_id": asignatura_id
+                }
+                qr_info = json.dumps(qr_data)
                 qr = qrcode.QRCode(
                     version=1,
                     error_correction=qrcode.constants.ERROR_CORRECT_L,

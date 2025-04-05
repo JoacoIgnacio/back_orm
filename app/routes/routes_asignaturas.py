@@ -18,16 +18,40 @@ def crear_asignaturas_route():
     try:
         datos_asignaturas = request.json
         asignatura = crear_asignaturas(datos_asignaturas)
-        if asignatura :
+
+        if asignatura:
             curso = obtener_curso_por_id(asignatura['curso_id'])
-            formato = crear_formato(curso['curso'], asignatura['alternativas'], asignatura['asignatura'], len(datos_asignaturas['preguntas']))
-            if formato :
-                actualizar_asignaturas(asignatura['id'], formato['ruta'], formato['columnas'])
-                return jsonify({"status": True, "mensaje": "Hoja de respuestas creada exitosamente", 'asignaturas': asignatura}), 201
-            else :
-                return jsonify({"status": False, "mensaje": "No se pudo crear el formato de la hoja de respuestas"}), 500
-        else :
-            return jsonify({"status": False, "mensaje": "No se pudo crear la Hoja de respuestas"}), 500
+            formato = crear_formato(
+                curso['curso'],
+                asignatura['alternativas'],
+                asignatura['asignatura'],
+                len(datos_asignaturas['preguntas'])
+            )
+
+            if formato:
+                # Aquí actualizamos la asignatura recién creada con ruta y columnas
+                actualizar_asignaturas(
+                    asignatura['id'],
+                    formato['ruta'],
+                    formato['columnas']
+                )
+
+                return jsonify({
+                    "status": True,
+                    "mensaje": "Hoja de respuestas creada exitosamente",
+                    "asignaturas": asignatura
+                }), 201
+            else:
+                return jsonify({
+                    "status": False,
+                    "mensaje": "No se pudo crear el formato de la hoja de respuestas"
+                }), 500
+        else:
+            return jsonify({
+                "status": False,
+                "mensaje": "No se pudo crear la Hoja de respuestas"
+            }), 500
+
     except Exception as err:
         return jsonify({"status": False, "error": str(err)}), 500
 

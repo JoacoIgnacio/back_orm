@@ -78,10 +78,12 @@ def generar_formato_alumnos_route(curso, asignatura):
             return jsonify({"status": False, "mensaje": "No se encontró ningún alumno en el curso"}), 404
 
         for alumno in alumnos:
+            if len(alumno) < 4: #verificar que el alumno tenga los campos esperados
+                continue
             data_alumnos = {
                 'id': alumno[0],
-                'nombre': alumno[1],
-                'apellido': alumno[2],
+                'nombre': alumno[1].strip(),
+                'apellido': alumno[2].strip(),
                 'curso_id': alumno[3],
                 'asignatura': asignatura['id']
             }

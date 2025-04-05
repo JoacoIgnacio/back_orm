@@ -2,23 +2,25 @@
 from app.BD.conexion import obtener_conexion
 
 def crear_curso(curso):
+    curso_id = None  # Inicializa aquí la variable
+    conexion = None
     try:
         conexion = obtener_conexion()
-        with conexion.cursor() as cursor:
-            # Insertar nuevo curso
-            sql_curso = "INSERT INTO cursos (curso, activo, user_id) VALUES (%s, %s, %s)"
-            cursor.execute(sql_curso, (curso['curso'], curso['activo'], curso['user_id']))
-            conexion.commit()
-
-            # Obtener el ID del curso recién insertado
-            curso_id = cursor.lastrowid
-
+        cursor = conexion.cursor()
+        cursor.execute(
+            "INSERT INTO cursos (curso, activo, user_id) VALUES (%s, %s, %s)",
+            (curso['curso'], curso['activo'], curso['user_id'])
+        )
+        conexion.commit()
+        curso_id = cursor.lastrowid
     except Exception as err:
         print('Error al crear curso:', err)
+        curso_id = None
     finally:
         if conexion:
             conexion.close()
     return curso_id
+
 
 def obtener_cursos_por_usuario(user_id):
     cursos = []

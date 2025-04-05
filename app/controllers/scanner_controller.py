@@ -1,263 +1,100 @@
 import cv2
+import numpy as np
+import imutils
 from imutils.perspective import four_point_transform
 from imutils import contours
-import imutils
-import numpy as np
 import base64
-import os
-import shutil
 
-def process_image(image, alumno, total_columnas):
+def procesar_y_evaluar_prueba(image_path, alumno, alternativas, ANSWER_KEY):
     try:
-        total_columnas = int(total_columnas)
-        # Leer la imagen
-        image = cv2.imread(f'static/{alumno}.png')
+        print(f"Recibiendo imagen: {image_path}")
+        print(f"Alternativas: {alternativas}, ANSWER_KEY: {ANSWER_KEY}")
 
-        # Convertir la imagen a escala de grises
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-        # Aplicar desenfoque gaussiano para reducir el ruido
-        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-
-        # Aplicar el detector de bordes Canny
-        edges = cv2.Canny(blurred, 50, 150)
-
-        # Encontrar contornos en la imagen con bordes
-        contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-        # Inicializar variables para el contorno más grande
-        max_contour = None
-        max_area = 0
-
-        # Iterar sobre los contornos
-        for contour in contours:
-            # Calcular el área del contorno actual
-            area = cv2.contourArea(contour)
-
-            # Verificar si el área actual es más grande que el área máxima hasta ahora
-            if area > max_area:
-                max_area = area
-                max_contour = contour
-
-        if max_contour is None:
-            raise ValueError("No se encontró un contorno válido.")
-
-        # Extraer las coordenadas del rectángulo más grande
-        x, y, w, h = cv2.boundingRect(max_contour)
-
-        # Determinar las dimensiones y ubicación de la primera columna
-        column_width = w // total_columnas
-        column_height = h
-        first_column_x = x
-        first_column_y = y
-
-        # Crear una copia de la imagen original para trabajar
-        image_copy = image.copy()
-
-        # Crear el directorio si no existe
-        output_dir = f'static/columnas/{alumno}'
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-
-        for i in range(0, total_columnas):
-            # Calcular las coordenadas de la siguiente columna
-            next_column_x = first_column_x + i * column_width
-
-            # Recortar la región de interés (ROI) correspondiente a la siguiente columna
-            roi = image_copy[first_column_y:first_column_y + column_height, next_column_x:next_column_x + column_width]
-            
-            cv2.rectangle(roi, (0, 0), (roi.shape[1], roi.shape[0]), (255, 255, 255), 3)
-
-            # Guardar la ROI con el contorno de color blanco
-            column_path = os.path.join(output_dir, f'columna_{i + 1}_{alumno}.png')
-            cv2.imwrite(column_path, roi)
-
-            # Verificar si la imagen se guardó correctamente
-            if not os.path.exists(column_path):
-                raise ValueError(f"No se pudo guardar la imagen en {column_path}")
-
-        # Leer las imágenes generadas
-        columnas = []
-        for i in range(total_columnas):
-            imagen_path = os.path.join(output_dir, f'columna_{i + 1}_{alumno}.png')
-            columna = cv2.imread(imagen_path)
-            if columna is None:
-                raise ValueError(f"No se pudo leer la imagen en {imagen_path}")
-            columnas.append(columna)
-
-        # Concatenar verticalmente las imágenes
-        resultado = cv2.vconcat(columnas)
-
-        # Dibujar un rectángulo negro alrededor de la imagen resultante
-        resultado_con_rectangulo = cv2.rectangle(resultado, (0, 0), (resultado.shape[1], resultado.shape[0]), (0, 0, 0), 3)
-
-        # Guardar la imagen resultante con el rectángulo negro
-        result_path = f'static/imagen_resultante_{alumno}.png'
-        cv2.imwrite(result_path, resultado_con_rectangulo)
-
-        # Verificar si la imagen resultante se guardó correctamente
-        if not os.path.exists(result_path):
-            raise ValueError(f"No se pudo guardar la imagen resultante en {result_path}")
+        imagen = cv2.imread(image_path)
+        if imagen is None:
+            raise ValueError("La imagen no pudo cargarse correctamente.")
         
-        return True
-    except Exception as err:
-        print('Error al procesar la imagen:', err)
-        return False
-
-def solve_test(ANSWER_KEY, alternativas, alumno):
-    try:
-        # Clave de respuestas predefinida
-        ANSWER_KEY_ = {int(key): int(value) for key, value in ANSWER_KEY.items()}
-        # Umbral de píxeles para considerar una burbuja marcada
-        UMBRAL_PIXELES = 600
-
-        # Cargar la imagen
-        image = cv2.imread(f'static/imagen_resultante_{alumno}.png')
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        gray = cv2.cvtColor(imagen, cv2.COLOR_BGR2GRAY)
         blurred = cv2.GaussianBlur(gray, (5, 5), 0)
         edged = cv2.Canny(blurred, 75, 200)
 
-        # Encontrar contornos externos
         cnts = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         cnts = imutils.grab_contours(cnts)
-        docCnt = None
+        examenCnt = None
 
-        # Verificar si se encontraron contornos
-        if len(cnts) > 0:
-            cnts = sorted(cnts, key=cv2.contourArea, reverse=True)
-            
-            for c in cnts:
-                peri = cv2.arcLength(c, True)
-                approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+        if len(cnts) == 0:
+            raise ValueError("No se encontraron contornos.")
 
-                if len(approx) == 4:
-                    docCnt = approx
-                    break
+        cnts = sorted(cnts, key=cv2.contourArea, reverse=True)
+        for c in cnts:
+            peri = cv2.arcLength(c, True)
+            approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+            if len(approx) == 4:
+                examenCnt = approx
+                break
 
-        # Verificar que se haya encontrado el contorno del papel
-        if docCnt is not None:
-            paper = four_point_transform(image, docCnt.reshape(4, 2))
-            warped = four_point_transform(gray, docCnt.reshape(4, 2))
-            thresh = cv2.threshold(warped, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
+        if examenCnt is None:
+            raise ValueError("No se detectó el contorno principal del examen.")
 
-            # Encontrar contornos de las burbujas
-            cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            cnts = imutils.grab_contours(cnts)
-            questionCnts = []
+        paper = four_point_transform(imagen, examenCnt.reshape(4, 2))
+        warped = four_point_transform(gray, examenCnt.reshape(4, 2))
+        thresh = cv2.threshold(warped, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
 
-            # Calcular promedios y filtrar contornos de burbujas
-            suma_anchos = 0
-            suma_altos = 0
-            cantidad_contornos = len(cnts)
-            aspect_ratios = []
+        cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cnts = imutils.grab_contours(cnts)
+        questionCnts = []
 
-            for c in cnts:
-                (x, y, w, h) = cv2.boundingRect(c)
-                ar = w / float(h)
-                aspect_ratios.append(ar)
-                suma_anchos += w
-                suma_altos += h
-            
-            promedio_anchos = suma_anchos / cantidad_contornos
-            promedio_altos = suma_altos / cantidad_contornos
-            min_ar = min(aspect_ratios)
-            max_ar = max(aspect_ratios)
+        for c in cnts:
+            (x, y, w, h) = cv2.boundingRect(c)
+            ratio = w / float(h)
+            if (w > 20 and h > 20 and 0.9 <= ratio <= 1.1):
+                questionCnts.append(c)
 
-            for c in cnts:
-                (x, y, w, h) = cv2.boundingRect(c)
-                ar = w / float(h)
-                if w >= promedio_anchos and h >= promedio_altos and ar >= min_ar and ar <= max_ar:
-                    questionCnts.append(c)
+        total_preguntas = len(ANSWER_KEY)
+        if len(questionCnts) != total_preguntas * alternativas:
+            raise ValueError(f"La cantidad de preguntas detectadas ({len(questionCnts)}) no coincide con la esperada ({total_preguntas * alternativas}).")
 
-            if questionCnts:
-                # Ordenar contornos de arriba a abajo
-                questionCnts = contours.sort_contours(questionCnts, method="top-to-bottom")[0]
-                correct = 0
-                incorrect = 0
-                score = 0.0
-                total_questions = len(questionCnts) // int(alternativas)  # Total de preguntas
-                respuestas_marcadas = {}
+        questionCnts = contours.sort_contours(questionCnts, method="top-to-bottom")[0]
 
-                # Evaluar cada pregunta
-                for (q, i) in enumerate(np.arange(0, len(questionCnts), int(alternativas))):
-                    cnts = contours.sort_contours(questionCnts[i:i + int(alternativas)])[0]
-                    bubbled = None
-                    
-                    # Inicializar respuesta incorrecta
-                    answered = False
+        respuestas_marcadas = {}
+        correctas = 0
 
-                    for (j, c) in enumerate(cnts):
-                        mask = np.zeros(thresh.shape, dtype="uint8")
-                        cv2.drawContours(mask, [c], -1, 255, -1)
-                        mask = cv2.bitwise_and(thresh, thresh, mask=mask)
-                        total = cv2.countNonZero(mask)
+        for (q, i) in enumerate(range(0, len(questionCnts), alternativas)):
+            cnts_pregunta = contours.sort_contours(questionCnts[i:i+alternativas])[0]
+            burbuja_marcada = None
 
-                        if bubbled is None and total > UMBRAL_PIXELES:
-                            bubbled = (total, j)
-                            answered = True
-                        
-                    if answered:
-                        respuestas_marcadas[q + 1] = bubbled[1]
-                    
-                    k = ANSWER_KEY_.get(q, -1)
+            for (j, c) in enumerate(cnts_pregunta):
+                mask = np.zeros(thresh.shape, dtype="uint8")
+                cv2.drawContours(mask, [c], -1, 255, -1)
+                mask = cv2.bitwise_and(thresh, thresh, mask=mask)
+                total = cv2.countNonZero(mask)
 
-                    # Si no se marcó ninguna respuesta, marcar como incorrecta
-                    if not answered:
-                        bubbled = (0, -1)
+                if burbuja_marcada is None or total > burbuja_marcada[0]:
+                    burbuja_marcada = (total, j)
 
-                    # Comparar respuesta elegida con respuesta correcta
-                    if k == bubbled[1]:
-                        color = (0, 255, 0)  # verde para respuesta correcta
-                        correct += 1
-                    else:
-                        color = (0, 0, 255)
-                        incorrect += 1  # rojo para respuesta incorrecta
+            respuestas_marcadas[q] = burbuja_marcada[1]
 
-                    # Dibujar contorno alrededor de la respuesta seleccionada en la imagen original
-                    if k != -1 and k < len(cnts):
-                        cv2.drawContours(paper, [cnts[k]], -1, color, 3)
+            color = (0, 0, 255)
+            if int(ANSWER_KEY[str(q)]) == burbuja_marcada[1]:  # <- Aquí
+                color = (0, 255, 0)
+                correctas += 1
 
-                # Calcular el puntaje final         
-                score = (correct / total_questions) * 100
-                nota = int(score) if score.is_integer() else round(score)
+            cv2.drawContours(paper, [cnts_pregunta[int(ANSWER_KEY[str(q)])]], -1, color, 3)  # <- Aquí
 
-                # Mostrar el puntaje en la imagen del examen
-                cv2.putText(paper, "{:.1f}%".format(nota), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
+        nota_final = (correctas / total_preguntas) * 100
 
+        _, paper_encoded = cv2.imencode('.png', paper)
+        paper_base64 = base64.b64encode(paper_encoded).decode('utf-8')
+        paper_base64_with_prefix = f'data:image/png;base64,{paper_base64}'
 
-            eliminar_contenido_directorio(f'static/columnas/{alumno}', alumno)
-            eliminar_contenido_directorio(f'static/imagen_resultante_{alumno}.png', alumno)
-            # Mostrar imágenes
-            _, paper_encoded = cv2.imencode('.png', paper)
-            paper_base64 = base64.b64encode(paper_encoded.tobytes()).decode('utf-8')
-            paper_base64_with_prefix = f'data:image/png;base64,{paper_base64}'
-            return {'image': paper_base64_with_prefix, 'nota': nota, 'respuestas_marcadas': respuestas_marcadas}
-            
-        else:
-            print("No se encontró un contorno cuadrilátero para el papel del examen.")
+        resultado = {
+            "nota": nota_final,
+            "respuestas_marcadas": respuestas_marcadas,
+            "image": paper_base64_with_prefix
+        }
+
+        return resultado
+
     except Exception as err:
-        print('Error al procesar la imagen:', err)
-        return False
-        
-def eliminar_contenido_directorio(directorio, alumno):
-    # Verificar si el directorio existe
-    if os.path.isdir(directorio):
-        try:
-            # Listar todo el contenido del directorio
-            for item in os.listdir(directorio):
-                item_path = os.path.join(directorio, item)
-                if os.path.isfile(item_path):
-                    os.remove(item_path)  # Eliminar archivo
-                elif os.path.isdir(item_path):
-                    shutil.rmtree(item_path)  # Eliminar subdirectorio y su contenido
-            print(f"Contenido del directorio '{directorio}' ha sido eliminado.")
-        except PermissionError as e:
-            print(f"Error de permisos al eliminar el contenido del directorio: {e}")
-        except FileNotFoundError as e:
-            print(f"Archivo o directorio no encontrado: {e}")
-        except Exception as e:
-            print(f"Ocurrió un error inesperado: {e}")
-    else:
-        os.remove(f"static/imagen_resultante_{alumno}.png")
-        os.remove(f"static/{alumno}.png")
-        print(f"El archivo '{directorio}' ha sido eliminado.")
+        print(f'Error en procesar_y_evaluar_prueba: {err}')
+        return None
