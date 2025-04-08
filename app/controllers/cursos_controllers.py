@@ -1,5 +1,7 @@
 # app/DB/controllers/cursos_controller.py
 from app.BD.conexion import obtener_conexion
+import shutil
+import os
 
 def crear_curso(curso):
     curso_id = None  # Inicializa aquí la variable
@@ -117,16 +119,17 @@ def actualizar_curso(curso_id, nuevos_datos):
         if conexion:
             conexion.close()
 
-def eliminar_curso(curso_id):
+def eliminar_curso(id):
+    conexion = obtener_conexion()
     try:
-        conexion = obtener_conexion()
         with conexion.cursor() as cursor:
-            # Eliminar un curso por ID
-            sql = "DELETE FROM cursos WHERE id = %s"
-            cursor.execute(sql, (curso_id,))
-        conexion.commit()
-    except Exception as err:
-        print(f'Error al eliminar curso con ID {curso_id}:', err)
+            cursor.execute("DELETE FROM cursos WHERE id = %s", (id,))
+            conexion.commit()
+
+            # Borrar carpetas estáticas
+            for carpeta in ["formato", "alumnos"]:
+                ruta = os.path.join("static", carpeta, str(id))
+                if os.path.exists(ruta):
+                    shutil.rmtree(ruta)
     finally:
-        if conexion:
-            conexion.close()
+        conexion.close()

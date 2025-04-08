@@ -19,13 +19,13 @@ def crear_formato(curso, alternativas, asignatura, num_preguntas):
         color_texto = "black"
         color_circulo = "black"
         color_rectangulo = "black"
-        radio_circulo = 15 * 4  # Radio aumentado para la resolución más alta
-        espacio_entre_circulos = 40 * 4
-        espacio_entre_preguntas = 40 * 4
+        radio_circulo = 20 * 4  # Radio aumentado para la resolución más alta
+        espacio_entre_circulos = 50 * 4
+        espacio_entre_preguntas = 50 * 4
         margen_superior = 500 * 4
         margen_izquierdo = 50 * 4
-        espacio_entre_columnas = 300 * 4  # Ajustado a la nueva resolución
-        preguntas_por_columna = 10
+        espacio_entre_columnas = 350 * 4  # Ajustado a la nueva resolución
+        preguntas_por_columna = 12
 
         # Calcular la cantidad de preguntas por columna
         if num_preguntas > 60:
@@ -34,8 +34,8 @@ def crear_formato(curso, alternativas, asignatura, num_preguntas):
         if num_preguntas == 50:
             preguntas_por_columna = 20
 
-        if num_preguntas == 10:
-            preguntas_por_columna = 10
+        if num_preguntas == 12:
+            preguntas_por_columna = 12
 
         # Crear una imagen nueva en formato carta con fondo blanco
         imagen = Image.new("RGBA", (ancho_imagen, alto_imagen), color_fondo)
@@ -96,29 +96,29 @@ def crear_formato(curso, alternativas, asignatura, num_preguntas):
         alto_rectangulo = (preguntas_por_columna * espacio_entre_preguntas)
 
                # Coordenadas del área de preguntas
-        x0 = margen_izquierdo - 30
-        y0 = margen_superior - 100
+        x0 = margen_izquierdo - 10
+        y0 = margen_superior - 150
         x1 = margen_izquierdo + ancho_rectangulo
         y1 = margen_superior + alto_rectangulo
 
         # Dibujar contorno más grueso
-        #dibujar.rectangle([(x0, y0), (x1, y1)], outline="black", width=16)
+        dibujar.rectangle([(x0, y0), (x1, y1)], outline="black", width=16)
 
         # Tamaño del marcador
-        marcador = 60
+        #marcador = 60
 
         # Dibujar marcadores guía en cada esquina del área de preguntas
-        esquinas = [
-            (x0 - marcador // 2, y0 - marcador // 2),  # superior izquierda
-            (x1 - marcador // 2, y0 - marcador // 2),  # superior derecha
-            (x0 - marcador // 2, y1 - marcador // 2),  # inferior izquierda
-            (x1 - marcador // 2, y1 - marcador // 2),  # inferior derecha
-        ]
-        for esquina in esquinas:
-            dibujar.rectangle(
-                [esquina, (esquina[0] + marcador, esquina[1] + marcador)],
-                fill="black"
-            )
+       # esquinas = [
+       #     (x0 - marcador // 2, y0 - marcador // 2),  # superior izquierda
+       #     (x1 - marcador // 2, y0 - marcador // 2),  # superior derecha
+       #     (x0 - marcador // 2, y1 - marcador // 2),  # inferior izquierda
+       #     (x1 - marcador // 2, y1 - marcador // 2),  # inferior derecha
+       # ]
+       # for esquina in esquinas:
+       #     dibujar.rectangle(
+       #         [esquina, (esquina[0] + marcador, esquina[1] + marcador)],
+       #         fill="black"
+       #     )
 
 
         # Obtener la fecha actual y formatearla

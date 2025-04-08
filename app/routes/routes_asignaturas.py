@@ -4,7 +4,7 @@ from app.controllers.asignaturas_controller import (
     obtener_asignaturas,
     obtener_asignaturas_por_id,
     actualizar_asignaturas,
-    eliminar_asignaturas,
+    eliminar_asignatura,
     obtener_asignaturas_por_curso
 )
 from app.controllers.formato_controller import crear_formato

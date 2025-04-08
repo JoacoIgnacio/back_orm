@@ -1,6 +1,9 @@
 from app.BD.conexion import obtener_conexion
 import json
 from typing import List, Dict
+import shutil
+import os
+
 
 def crear_asignaturas(asignaturas):
     try:
@@ -113,15 +116,25 @@ def actualizar_asignaturas(asignaturas_id, ruta_formato, columnas):
         if conexion:
             conexion.close()
 
-def eliminar_asignaturas(asignaturas_id):
+def eliminar_asignatura(id):
+    conexion = obtener_conexion()
     try:
-        conexion = obtener_conexion()
         with conexion.cursor() as cursor:
-            sql = "DELETE FROM asignaturas WHERE id = %s"
-            cursor.execute(sql, (asignaturas_id,))
-        conexion.commit()
-    except Exception as err:
-        print(f'Error al eliminar hoja de respuestas con ID {asignaturas_id}:', err)
+            # Obtener curso_id y nombre antes de eliminar
+            cursor.execute("SELECT curso_id, nombre FROM asignaturas WHERE id = %s", (id,))
+            result = cursor.fetchone()
+            if result:
+                curso_id, nombre_asignatura = result
+
+                cursor.execute("DELETE FROM asignaturas WHERE id = %s", (id,))
+                conexion.commit()
+
+                # Eliminar carpetas relacionadas
+                ruta_formato = os.path.join("static", "formato", str(curso_id), nombre_asignatura)
+                ruta_alumnos = os.path.join("static", "alumnos", str(curso_id), nombre_asignatura)
+
+                for ruta in [ruta_formato, ruta_alumnos]:
+                    if os.path.exists(ruta):
+                        shutil.rmtree(ruta)
     finally:
-        if conexion:
-            conexion.close()
+        conexion.close()
