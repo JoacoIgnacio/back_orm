@@ -40,14 +40,29 @@ def procesar_y_evaluar_prueba(image_path, alumno, alternativas, ANSWER_KEY):
         warped = four_point_transform(gray, examenCnt.reshape(4, 2))
         thresh = cv2.threshold(warped, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
 
-        cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        cnts = imutils.grab_contours(cnts)
+        # 🔍 Recortar verticalmente la zona donde están las preguntas
+        zona_inicio_y = 800
+        zona_final_y = warped.shape[0]
+        thresh_recortado = thresh[zona_inicio_y:zona_final_y, :]
+
+        # Mostrar contornos encontrados para depuración
+        cnts, _ = cv2.findContours(thresh_recortado.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        # Dibujar contornos en copia para debug
+        contorno_debug = cv2.cvtColor(thresh_recortado.copy(), cv2.COLOR_GRAY2BGR)
+        cv2.drawContours(contorno_debug, cnts, -1, (0, 255, 0), 2)  # Verde
+
+        # Guardar imagen para verificar visualmente los contornos
+        cv2.imwrite("debug_contornos.png", contorno_debug)
+
         questionCnts = []
 
         for c in cnts:
             (x, y, w, h) = cv2.boundingRect(c)
             ratio = w / float(h)
             if (w > 20 and h > 20 and 0.9 <= ratio <= 1.1):
+                # 💡 Ajustar coordenadas Y al original
+                c[:, :, 1] += zona_inicio_y
                 questionCnts.append(c)
 
         total_preguntas = len(ANSWER_KEY)
@@ -75,11 +90,11 @@ def procesar_y_evaluar_prueba(image_path, alumno, alternativas, ANSWER_KEY):
             respuestas_marcadas[q] = burbuja_marcada[1]
 
             color = (0, 0, 255)
-            if int(ANSWER_KEY[str(q)]) == burbuja_marcada[1]:  # <- Aquí
+            if int(ANSWER_KEY[str(q)]) == burbuja_marcada[1]:
                 color = (0, 255, 0)
                 correctas += 1
 
-            cv2.drawContours(paper, [cnts_pregunta[int(ANSWER_KEY[str(q)])]], -1, color, 3)  # <- Aquí
+            cv2.drawContours(paper, [cnts_pregunta[int(ANSWER_KEY[str(q)])]], -1, color, 3)
 
         nota_final = (correctas / total_preguntas) * 100
 
