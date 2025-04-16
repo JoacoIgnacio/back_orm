@@ -1,100 +1,190 @@
 import cv2
 import numpy as np
-import imutils
-from imutils.perspective import four_point_transform
-from imutils import contours
 import base64
 
-def procesar_y_evaluar_prueba(image_path, alumno, alternativas, ANSWER_KEY):
-    try:
-        print(f"Recibiendo imagen: {image_path}")
-        print(f"Alternativas: {alternativas}, ANSWER_KEY: {ANSWER_KEY}")
+def ordenar_contornos(contornos):
+    return sorted(contornos, key=lambda c: (cv2.boundingRect(c)[1], cv2.boundingRect(c)[0]))
 
-        imagen = cv2.imread(image_path)
-        if imagen is None:
-            raise ValueError("La imagen no pudo cargarse correctamente.")
-        
-        gray = cv2.cvtColor(imagen, cv2.COLOR_BGR2GRAY)
-        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-        edged = cv2.Canny(blurred, 75, 200)
+def mejorar_brillo(imagen_gray):
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    return clahe.apply(imagen_gray)
 
-        cnts = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        cnts = imutils.grab_contours(cnts)
-        examenCnt = None
+def aumentar_brillo(imagen_gray, alpha=1.2, beta=30):
+    return cv2.convertScaleAbs(imagen_gray, alpha=alpha, beta=beta)
 
-        if len(cnts) == 0:
-            raise ValueError("No se encontraron contornos.")
 
-        cnts = sorted(cnts, key=cv2.contourArea, reverse=True)
-        for c in cnts:
-            peri = cv2.arcLength(c, True)
-            approx = cv2.approxPolyDP(c, 0.02 * peri, True)
-            if len(approx) == 4:
-                examenCnt = approx
+def encontrar_marco(imagen):
+    gris = cv2.cvtColor(imagen, cv2.COLOR_BGR2GRAY)
+    _, umbral = cv2.threshold(gris, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    contornos, _ = cv2.findContours(umbral, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contornos = sorted(contornos, key=cv2.contourArea, reverse=True)
+
+    for c in contornos:
+        peri = cv2.arcLength(c, True)
+        aprox = cv2.approxPolyDP(c, 0.02 * peri, True)
+        if len(aprox) == 4:
+            return aprox.reshape(4, 2)
+    return None
+
+def ordenar_puntos(pts):
+    rect = np.zeros((4, 2), dtype="float32")
+    s = pts.sum(axis=1)
+    d = np.diff(pts, axis=1)
+    rect[0] = pts[np.argmin(s)]
+    rect[2] = pts[np.argmax(s)]
+    rect[1] = pts[np.argmin(d)]
+    rect[3] = pts[np.argmax(d)]
+    return rect
+
+def recortar_area(imagen, puntos):
+    rect = ordenar_puntos(puntos)
+    (tl, tr, br, bl) = rect
+    ancho = max(int(np.linalg.norm(br - bl)), int(np.linalg.norm(tr - tl)))
+    alto = max(int(np.linalg.norm(tr - br)), int(np.linalg.norm(tl - bl)))
+    dst = np.array([[0, 0], [ancho - 1, 0], [ancho - 1, alto - 1], [0, alto - 1]], dtype="float32")
+    M = cv2.getPerspectiveTransform(rect, dst)
+    return cv2.warpPerspective(imagen, M, (ancho, alto))
+
+def agrupar_por_filas(contornos, tolerancia=25):
+    filas = []
+    contornos = sorted(contornos, key=lambda c: cv2.boundingRect(c)[1])
+    for contorno in contornos:
+        x, y, w, h = cv2.boundingRect(contorno)
+        agregado = False
+        for fila in filas:
+            _, fy, _, fh = cv2.boundingRect(fila[0])
+            if abs(y - fy) < tolerancia:
+                fila.append(contorno)
+                agregado = True
                 break
+        if not agregado:
+            filas.append([contorno])
+    return filas
 
-        if examenCnt is None:
-            raise ValueError("No se detectó el contorno principal del examen.")
+def extraer_respuestas(imagen_recortada, max_alternativas):
+    gris = cv2.cvtColor(imagen_recortada, cv2.COLOR_BGR2GRAY)
+    gris = aumentar_brillo(gris, alpha=1.2, beta=40)
 
-        paper = four_point_transform(imagen, examenCnt.reshape(4, 2))
-        warped = four_point_transform(gray, examenCnt.reshape(4, 2))
-        thresh = cv2.threshold(warped, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
+    umbral = cv2.adaptiveThreshold(gris, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                   cv2.THRESH_BINARY_INV, 57, 5)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2, 2))
+    umbral = cv2.dilate(umbral, kernel, iterations=1)
 
-        cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        cnts = imutils.grab_contours(cnts)
-        questionCnts = []
+    h, w = umbral.shape
+    margen = 5
+    umbral = umbral[margen:h - margen, margen:w - margen]
+    imagen_recortada = imagen_recortada[margen:h - margen, margen:w - margen]
 
-        for c in cnts:
-            (x, y, w, h) = cv2.boundingRect(c)
-            ratio = w / float(h)
-            if (w > 20 and h > 20 and 0.9 <= ratio <= 1.1):
-                questionCnts.append(c)
+    contornos, _ = cv2.findContours(umbral, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    burbujas = []
+    for c in contornos:
+        area = cv2.contourArea(c)
+        _, _, w, h = cv2.boundingRect(c)
+        aspect_ratio = float(w) / h if h != 0 else 0
+        if 250 < area < 2500 and 0.7 < aspect_ratio < 1.3:
+            burbujas.append(c)
 
-        total_preguntas = len(ANSWER_KEY)
-        if len(questionCnts) != total_preguntas * alternativas:
-            raise ValueError(f"La cantidad de preguntas detectadas ({len(questionCnts)}) no coincide con la esperada ({total_preguntas * alternativas}).")
+    burbujas = ordenar_contornos(burbujas)
+    columnas = [[] for _ in range(3)]
+    total_w = imagen_recortada.shape[1]
 
-        questionCnts = contours.sort_contours(questionCnts, method="top-to-bottom")[0]
+    for c in burbujas:
+        x, y, w, h = cv2.boundingRect(c)
+        if x < total_w / 3:
+            columnas[0].append(c)
+        elif x < 2 * total_w / 3:
+            columnas[1].append(c)
+        else:
+            columnas[2].append(c)
 
-        respuestas_marcadas = {}
-        correctas = 0
+    respuestas = []
+    burbujas_por_pregunta = []
+    for col in columnas:
+        filas = agrupar_por_filas(col, tolerancia=30)
+        for fila in filas:
+            if len(fila) < 3 or len(fila) > max_alternativas:
+                respuestas.append(-1)
+                burbujas_por_pregunta.append(fila)
+                continue
+            fila = sorted(fila, key=lambda c: cv2.boundingRect(c)[0])
+            valores = []
+            for contorno in fila:
+                mascara = np.zeros(umbral.shape, dtype="uint8")
+                cv2.drawContours(mascara, [contorno], -1, 255, -1)
+                total = cv2.countNonZero(cv2.bitwise_and(umbral, umbral, mask=mascara))
+                valores.append(total)
 
-        for (q, i) in enumerate(range(0, len(questionCnts), alternativas)):
-            cnts_pregunta = contours.sort_contours(questionCnts[i:i+alternativas])[0]
-            burbuja_marcada = None
+            max_valor = max(valores)
+            seleccionada = -1
+            for i, val in enumerate(valores):
+                if val >= 0.75 * max_valor:
+                    if seleccionada == -1:
+                        seleccionada = i
+                    else:
+                        seleccionada = -1
+                        break
 
-            for (j, c) in enumerate(cnts_pregunta):
-                mask = np.zeros(thresh.shape, dtype="uint8")
-                cv2.drawContours(mask, [c], -1, 255, -1)
-                mask = cv2.bitwise_and(thresh, thresh, mask=mask)
-                total = cv2.countNonZero(mask)
+            respuestas.append(seleccionada)
+            burbujas_por_pregunta.append(fila)
 
-                if burbuja_marcada is None or total > burbuja_marcada[0]:
-                    burbuja_marcada = (total, j)
+    print(f"Total burbujas detectadas: {len(burbujas)}")
+    print(f"Total preguntas detectadas: {len(respuestas)}")
 
-            respuestas_marcadas[q] = burbuja_marcada[1]
+    return respuestas, burbujas_por_pregunta, imagen_recortada
 
-            color = (0, 0, 255)
-            if int(ANSWER_KEY[str(q)]) == burbuja_marcada[1]:  # <- Aquí
+
+def corregir_respuestas(respuestas, answer_key):
+    correctas = 0
+    for i, r in enumerate(respuestas):
+        if i in answer_key and r == answer_key[i]:
+            correctas += 1
+    return correctas, len(answer_key)
+
+def procesar_y_evaluar_prueba(image_path, alumno, alternativas, answer_key):
+    imagen = cv2.imread(image_path)
+    if imagen is None:
+        return {"error": "No se pudo cargar la imagen."}
+
+    answer_key = {int(k): int(v) for k, v in answer_key.items()}
+
+    marco = encontrar_marco(imagen)
+    if marco is None:
+        return {"error": "No se detectó el marco en la imagen."}
+
+    recortada = recortar_area(imagen, marco)
+    respuestas, burbujas_pregunta, imagen_eval = extraer_respuestas(recortada, alternativas)
+
+    for i, fila in enumerate(burbujas_pregunta):
+        if i >= len(respuestas):
+            continue
+        seleccionada = respuestas[i]
+        correcta = answer_key.get(i, -1)
+        for j, contorno in enumerate(fila):
+            if seleccionada == -1:
+                color = (0, 255, 255)
+            elif j == seleccionada and j == correcta:
                 color = (0, 255, 0)
-                correctas += 1
+            elif j == seleccionada and j != correcta:
+                color = (0, 0, 255)
+            elif j == correcta:
+                color = (255, 0, 0)
+            else:
+                color = (200, 200, 200)
+            cv2.drawContours(imagen_eval, [contorno], -1, color, 2)
 
-            cv2.drawContours(paper, [cnts_pregunta[int(ANSWER_KEY[str(q)])]], -1, color, 3)  # <- Aquí
+    cv2.imwrite("imagen_debug_local.png", imagen_eval)
+    _, imagen_codificada = cv2.imencode('.png', imagen_eval)
+    imagen_base64 = base64.b64encode(imagen_codificada).decode('utf-8')
+    imagen_base64_con_prefijo = f'data:image/png;base64,{imagen_base64}'
 
-        nota_final = (correctas / total_preguntas) * 100
+    aciertos, total = corregir_respuestas(respuestas, answer_key)
 
-        _, paper_encoded = cv2.imencode('.png', paper)
-        paper_base64 = base64.b64encode(paper_encoded).decode('utf-8')
-        paper_base64_with_prefix = f'data:image/png;base64,{paper_base64}'
-
-        resultado = {
-            "nota": nota_final,
-            "respuestas_marcadas": respuestas_marcadas,
-            "image": paper_base64_with_prefix
-        }
-
-        return resultado
-
-    except Exception as err:
-        print(f'Error en procesar_y_evaluar_prueba: {err}')
-        return None
+    resultado = {
+        "alumno": alumno,
+        "respuestas_detectadas": respuestas,
+        "total_preguntas": total,
+        "respuestas_correctas": aciertos,
+        "porcentaje": round(aciertos / total * 100, 2) if total > 0 else 0.0,
+        "imagen": imagen_base64_con_prefijo
+    }
+    return resultado
