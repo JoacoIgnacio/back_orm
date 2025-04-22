@@ -12,13 +12,11 @@ def mejorar_brillo(imagen_gray):
 def aumentar_brillo(imagen_gray, alpha=1.2, beta=30):
     return cv2.convertScaleAbs(imagen_gray, alpha=alpha, beta=beta)
 
-
 def encontrar_marco(imagen):
     gris = cv2.cvtColor(imagen, cv2.COLOR_BGR2GRAY)
     _, umbral = cv2.threshold(gris, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
     contornos, _ = cv2.findContours(umbral, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contornos = sorted(contornos, key=cv2.contourArea, reverse=True)
-
     for c in contornos:
         peri = cv2.arcLength(c, True)
         aprox = cv2.approxPolyDP(c, 0.02 * peri, True)
@@ -85,28 +83,30 @@ def extraer_respuestas(imagen_recortada, max_alternativas):
             burbujas.append(c)
 
     burbujas = ordenar_contornos(burbujas)
-    columnas = [[] for _ in range(3)]
+
+    total_burbujas = len(burbujas)
+    columnas_detectadas = total_burbujas // (12 * max_alternativas)
+    columnas_detectadas = max(1, min(columnas_detectadas, 3))  # Entre 1 y 3 columnas
+
+    columnas = [[] for _ in range(columnas_detectadas)]
     total_w = imagen_recortada.shape[1]
 
     for c in burbujas:
-        x, y, w, h = cv2.boundingRect(c)
-        if x < total_w / 3:
-            columnas[0].append(c)
-        elif x < 2 * total_w / 3:
-            columnas[1].append(c)
-        else:
-            columnas[2].append(c)
+        x, _, _, _ = cv2.boundingRect(c)
+        col_idx = int((x / total_w) * columnas_detectadas)
+        col_idx = min(col_idx, columnas_detectadas - 1)
+        columnas[col_idx].append(c)
 
-    respuestas = []
-    burbujas_por_pregunta = []
+    respuestas_columnas = []
+    burbujas_columnas = []
     for col in columnas:
         filas = agrupar_por_filas(col, tolerancia=30)
+        col_respuestas = []
+        col_burbujas = []
         for fila in filas:
-            if len(fila) < 3 or len(fila) > max_alternativas:
-                respuestas.append(-1)
-                burbujas_por_pregunta.append(fila)
-                continue
             fila = sorted(fila, key=lambda c: cv2.boundingRect(c)[0])
+            if len(fila) < 3 or len(fila) > max_alternativas:
+                continue
             valores = []
             for contorno in fila:
                 mascara = np.zeros(umbral.shape, dtype="uint8")
@@ -123,15 +123,26 @@ def extraer_respuestas(imagen_recortada, max_alternativas):
                     else:
                         seleccionada = -1
                         break
+            col_respuestas.append(seleccionada)
+            col_burbujas.append(fila)
+        respuestas_columnas.append(col_respuestas)
+        burbujas_columnas.append(col_burbujas)
 
-            respuestas.append(seleccionada)
-            burbujas_por_pregunta.append(fila)
+    # Recorrer por columnas primero (de arriba hacia abajo, izquierda a derecha)
+    respuestas_lineal = []
+    burbujas_lineal = []
+    num_columnas = len(respuestas_columnas)
+    for col_idx in range(num_columnas):
+        col_r = respuestas_columnas[col_idx]
+        col_b = burbujas_columnas[col_idx]
+        for fila_idx in range(len(col_r)):
+            respuestas_lineal.append(col_r[fila_idx])
+            burbujas_lineal.append(col_b[fila_idx])
 
     print(f"Total burbujas detectadas: {len(burbujas)}")
-    print(f"Total preguntas detectadas: {len(respuestas)}")
+    print(f"Total preguntas detectadas: {len(respuestas_lineal)}")
 
-    return respuestas, burbujas_por_pregunta, imagen_recortada
-
+    return respuestas_lineal, burbujas_lineal, imagen_recortada
 
 def corregir_respuestas(respuestas, answer_key):
     correctas = 0
@@ -161,13 +172,13 @@ def procesar_y_evaluar_prueba(image_path, alumno, alternativas, answer_key):
         correcta = answer_key.get(i, -1)
         for j, contorno in enumerate(fila):
             if seleccionada == -1:
-                color = (0, 255, 255)
+                color = (0, 255, 255)  # Amarillo: no respondida
             elif j == seleccionada and j == correcta:
-                color = (0, 255, 0)
+                color = (0, 255, 0)    # Verde: correcta
             elif j == seleccionada and j != correcta:
-                color = (0, 0, 255)
+                color = (0, 0, 255)    # Rojo: incorrecta
             elif j == correcta:
-                color = (255, 0, 0)
+                color = (255, 0, 0)    # Azul: correcta no marcada
             else:
                 color = (200, 200, 200)
             cv2.drawContours(imagen_eval, [contorno], -1, color, 2)
