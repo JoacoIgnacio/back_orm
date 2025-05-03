@@ -5,7 +5,8 @@ from app.controllers.asignaturas_controller import (
     obtener_asignaturas_por_id,
     actualizar_asignaturas,
     eliminar_asignatura,
-    obtener_asignaturas_por_curso
+    obtener_asignaturas_por_curso,
+    eliminar_asignatura_y_pruebas
 )
 from app.controllers.formato_controller import crear_formato
 from app.controllers.cursos_controllers import obtener_curso_por_id
@@ -99,7 +100,13 @@ def actualizar_asignaturas_por_id(asignaturas_id):
 @asignaturas_db_bp.route('/asignaturas/<int:asignaturas_id>', methods=['DELETE'])
 def eliminar_asignaturas_por_id(asignaturas_id):
     try:
-        eliminar_asignaturas(asignaturas_id)
+        eliminar_asignatura(asignaturas_id)
         return jsonify({"mensaje": "Hoja de respuestas eliminada exitosamente"}), 200
     except Exception as err:
         return jsonify({"error": str(err)}), 500
+
+@asignaturas_db_bp.route('/asignaturas_completa/<int:id>', methods=['DELETE'])
+def eliminar_asignatura_y_pruebas_route(id):
+    resultado = eliminar_asignatura_y_pruebas(id)
+    status_code = 200 if resultado["status"] else 404
+    return jsonify(resultado), status_code

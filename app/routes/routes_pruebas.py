@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from app.controllers.pruebas_controller import crear_prueba, obtener_pruebas, obtener_prueba_por_id, actualizar_prueba, eliminar_prueba
+from app.controllers.pruebas_controller import crear_prueba, obtener_pruebas, obtener_prueba_por_id, actualizar_prueba, eliminar_prueba, obtener_notas_por_asignatura_controller
 
 pruebas_db_bp = Blueprint('pruebas_db', __name__)
 
@@ -52,3 +52,11 @@ def eliminar_prueba_por_id(prueba_id):
         return jsonify({"mensaje": "Prueba eliminada exitosamente"}), 200
     except Exception as err:
         return jsonify({"error": str(err)}), 500
+    
+@pruebas_db_bp.route('/pruebas/notas_por_asignatura/<int:asignatura_id>', methods=['GET'])
+def obtener_notas_por_asignatura_route(asignatura_id):
+    notas = obtener_notas_por_asignatura_controller(asignatura_id)
+    if notas is not None:
+        return jsonify(notas)
+    else:
+        return jsonify({"error": "Error interno al obtener notas"}), 500

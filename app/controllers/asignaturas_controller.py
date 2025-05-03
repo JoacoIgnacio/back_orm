@@ -138,3 +138,37 @@ def eliminar_asignatura(id):
                         shutil.rmtree(ruta)
     finally:
         conexion.close()
+        
+def eliminar_asignatura_y_pruebas(id):
+    conexion = obtener_conexion()
+    try:
+        with conexion.cursor() as cursor:
+            # Obtener curso_id y nombre de la asignatura
+            cursor.execute("SELECT curso_id, asignatura FROM asignaturas WHERE id = %s", (id,))
+            result = cursor.fetchone()
+            if result:
+                curso_id, nombre_asignatura = result
+
+                # 1. Eliminar todas las pruebas asociadas a la asignatura
+                cursor.execute("DELETE FROM pruebas WHERE asignatura_id = %s", (id,))
+
+                # 2. Eliminar la asignatura
+                cursor.execute("DELETE FROM asignaturas WHERE id = %s", (id,))
+                conexion.commit()
+
+                # 3. Eliminar carpetas relacionadas (formato y alumnos)
+                ruta_formato = os.path.join("static", "formato", str(curso_id), nombre_asignatura)
+                ruta_alumnos = os.path.join("static", "alumnos", str(curso_id), nombre_asignatura)
+
+                for ruta in [ruta_formato, ruta_alumnos]:
+                    if os.path.exists(ruta):
+                        shutil.rmtree(ruta)
+
+                return {"status": True, "mensaje": "Asignatura, pruebas y archivos eliminados correctamente"}
+            else:
+                return {"status": False, "mensaje": "La asignatura no existe"}
+    except Exception as e:
+        print("Error:", str(e))
+        return {"status": False, "mensaje": "Error al eliminar la asignatura"}
+    finally:
+        conexion.close()

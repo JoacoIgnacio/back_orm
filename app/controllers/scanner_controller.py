@@ -59,7 +59,7 @@ def agrupar_por_filas(contornos, tolerancia=25):
             filas.append([contorno])
     return filas
 
-def extraer_respuestas(imagen_recortada, max_alternativas):
+def extraer_respuestas(imagen_recortada, max_alternativas,answer_key):
     gris = cv2.cvtColor(imagen_recortada, cv2.COLOR_BGR2GRAY)
     gris = aumentar_brillo(gris, alpha=1.2, beta=40)
 
@@ -84,17 +84,20 @@ def extraer_respuestas(imagen_recortada, max_alternativas):
 
     burbujas = ordenar_contornos(burbujas)
 
-    total_burbujas = len(burbujas)
-    columnas_detectadas = total_burbujas // (12 * max_alternativas)
-    columnas_detectadas = max(1, min(columnas_detectadas, 3))  # Entre 1 y 3 columnas
+    # Número estimado de columnas según cantidad esperada de preguntas
+    # cada columna puede contener hasta 24 preguntas (filas)
+    num_preguntas_esperadas = len(answer_key)
+    columnas_detectadas = min(3, max(1, (num_preguntas_esperadas + 23) // 24))
+
 
     columnas = [[] for _ in range(columnas_detectadas)]
     total_w = imagen_recortada.shape[1]
 
     for c in burbujas:
         x, _, _, _ = cv2.boundingRect(c)
-        col_idx = int((x / total_w) * columnas_detectadas)
-        col_idx = min(col_idx, columnas_detectadas - 1)
+        col_width = total_w // columnas_detectadas
+        col_idx = min(x // col_width, columnas_detectadas - 1)
+
         columnas[col_idx].append(c)
 
     respuestas_columnas = []
@@ -163,7 +166,7 @@ def procesar_y_evaluar_prueba(image_path, alumno, alternativas, answer_key):
         return {"error": "No se detectó el marco en la imagen."}
 
     recortada = recortar_area(imagen, marco)
-    respuestas, burbujas_pregunta, imagen_eval = extraer_respuestas(recortada, alternativas)
+    respuestas, burbujas_pregunta, imagen_eval = extraer_respuestas(recortada, alternativas,answer_key)
 
     for i, fila in enumerate(burbujas_pregunta):
         if i >= len(respuestas):
@@ -183,7 +186,7 @@ def procesar_y_evaluar_prueba(image_path, alumno, alternativas, answer_key):
                 color = (200, 200, 200)
             cv2.drawContours(imagen_eval, [contorno], -1, color, 2)
 
-    cv2.imwrite("imagen_debug_local.png", imagen_eval)
+
     _, imagen_codificada = cv2.imencode('.png', imagen_eval)
     imagen_base64 = base64.b64encode(imagen_codificada).decode('utf-8')
     imagen_base64_con_prefijo = f'data:image/png;base64,{imagen_base64}'
@@ -195,7 +198,6 @@ def procesar_y_evaluar_prueba(image_path, alumno, alternativas, answer_key):
         "respuestas_detectadas": respuestas,
         "total_preguntas": total,
         "respuestas_correctas": aciertos,
-        "porcentaje": round(aciertos / total * 100, 2) if total > 0 else 0.0,
         "imagen": imagen_base64_con_prefijo
     }
     return resultado

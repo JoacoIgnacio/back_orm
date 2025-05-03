@@ -13,54 +13,43 @@ def crear_formato(curso, alternativas, asignatura, num_preguntas):
     try:
         # Configuración inicial
         opciones = crear_opciones(int(alternativas))
-        ancho_imagen = 1272 * 4  # 8.5 pulgadas a 300 DPI (resolución aumentada 4 veces)
-        alto_imagen = 1647 * 4   # 11 pulgadas a 300 DPI (resolución aumentada 4 veces)
+        ancho_imagen = 1272 * 4
+        alto_imagen = 1647 * 4
         color_fondo = "white"
         color_texto = "black"
         color_circulo = "black"
-        color_rectangulo = "black"
-        radio_circulo = 20 * 4  # Radio aumentado para la resolución más alta
+        radio_circulo = 20 * 4
         espacio_entre_circulos = 50 * 4
         espacio_entre_preguntas = 50 * 4
-        margen_superior = 500 * 4
+        margen_superior = 350 * 4
         margen_izquierdo = 50 * 4
-        espacio_entre_columnas = 350 * 4  # Ajustado a la nueva resolución
-        preguntas_por_columna = 12
+        espacio_entre_columnas = 350 * 4
 
-        # Calcular la cantidad de preguntas por columna
-        if num_preguntas > 60:
-            preguntas_por_columna = 25
+        preguntas_por_col = 24
 
-        if num_preguntas == 50:
-            preguntas_por_columna = 20
-
-        if num_preguntas == 12:
-            preguntas_por_columna = 12
-
-        # Crear una imagen nueva en formato carta con fondo blanco
         imagen = Image.new("RGBA", (ancho_imagen, alto_imagen), color_fondo)
         dibujar = ImageDraw.Draw(imagen)
-        
-        font_path = os.path.join(os.getcwd(), "fonts", "Lato-Regular.ttf")
 
+        font_path = os.path.join(os.getcwd(), "fonts", "Lato-Regular.ttf")
         fuente = ImageFont.truetype(font_path, 60)
         fuente_labels = ImageFont.truetype(font_path, 80)
 
-        # Dibujar etiquetas de nombre y apellido
         dibujar.text((margen_izquierdo, 400), "Nombre:", fill=color_texto, font=fuente_labels)
         dibujar.text((margen_izquierdo, 720), "Apellido:", fill=color_texto, font=fuente_labels)
 
-        # Dibujar las respuestas en la imagen
+        # Inicializar límites del recuadro
+        min_x = float('inf')
+        min_y = float('inf')
+        max_x = float('-inf')
+        max_y = float('-inf')
+
         for i in range(1, num_preguntas + 1):
-            columna = (i - 1) // preguntas_por_columna  # Determinar la columna actual
-            fila = (i - 1) % preguntas_por_columna  # Determinar la fila dentro de la columna
-            total_columnas = columna + 1
-            
-            # Ajustar la posición según la columna
+            columna = (i - 1) // preguntas_por_col
+            fila = (i - 1) % preguntas_por_col
+
             posicion_x_pregunta = margen_izquierdo + columna * espacio_entre_columnas
             posicion_y_pregunta = margen_superior + (fila * espacio_entre_preguntas)
-            
-            # Dibujar círculos con opciones
+
             for j, opcion in enumerate(opciones):
                 x_circulo = posicion_x_pregunta + 400 + (j * espacio_entre_circulos)
                 y_circulo = posicion_y_pregunta
@@ -68,71 +57,47 @@ def crear_formato(curso, alternativas, asignatura, num_preguntas):
                     (x_circulo - radio_circulo, y_circulo - radio_circulo),
                     (x_circulo + radio_circulo, y_circulo + radio_circulo),
                 ]
-                dibujar.ellipse(coordenadas, outline=color_circulo, width=8) # Dibuja el círculo
-                
-                # Obtener el tamaño de la letra usando textbbox
+                dibujar.ellipse(coordenadas, outline=color_circulo, width=8)
+
                 bbox = dibujar.textbbox((0, 0), opcion, font=fuente)
                 ancho_letra = bbox[2] - bbox[0]
                 alto_letra = bbox[3] - bbox[1]
-                
-                # Calcular posición para centrar la letra dentro del círculo
                 x_texto = x_circulo - ancho_letra / 2
                 y_texto = y_circulo - alto_letra / 1.5
-                
-                dibujar.text((x_texto, y_texto), opcion, fill=color_texto, font=fuente)  # Escribe la opción dentro del círculo
+                dibujar.text((x_texto, y_texto), opcion, fill=color_texto, font=fuente)
 
-            # Ajustar la posición del número de pregunta para que quede centrado verticalmente con las opciones
+                if j == len(opciones) - 1:
+                    max_x = max(max_x, x_circulo + radio_circulo)
+
             bbox_pregunta = dibujar.textbbox((0, 0), f'{i} ', font=fuente)
             ancho_pregunta = bbox_pregunta[2] - bbox_pregunta[0]
             alto_pregunta = bbox_pregunta[3] - bbox_pregunta[1]
             x_pregunta = posicion_x_pregunta + 200
-            y_pregunta_centrada = posicion_y_pregunta - (alto_pregunta / 0.5 - radio_circulo)  # Ajuste para centrar verticalmente
-
+            y_pregunta_centrada = posicion_y_pregunta - (alto_pregunta / 0.5 - radio_circulo)
             dibujar.text((x_pregunta, y_pregunta_centrada), f'{i} ', fill=color_texto, font=fuente)
 
-        # Calcular dimensiones del rectángulo que cubre todas las preguntas
-        num_columnas = (num_preguntas - 1) // preguntas_por_columna + 1
-        ancho_rectangulo = (num_columnas * espacio_entre_columnas)
-        alto_rectangulo = (preguntas_por_columna * espacio_entre_preguntas)
+            # Actualizar límites
+            min_x = min(min_x, posicion_x_pregunta + 200)
+            min_y = min(min_y, posicion_y_pregunta - radio_circulo)
+            max_y = max(max_y, y_circulo + radio_circulo)
 
-               # Coordenadas del área de preguntas
-        x0 = margen_izquierdo - 10
-        y0 = margen_superior - 150
-        x1 = margen_izquierdo + ancho_rectangulo
-        y1 = margen_superior + alto_rectangulo
-
-        # Dibujar contorno más grueso
+        # Dibujar el recuadro adaptado
+        x0 = min_x - 50
+        y0 = min_y - 100
+        x1 = max_x + 50
+        y1 = max_y + 100
         dibujar.rectangle([(x0, y0), (x1, y1)], outline="black", width=16)
 
-        # Tamaño del marcador
-        #marcador = 60
-
-        # Dibujar marcadores guía en cada esquina del área de preguntas
-       # esquinas = [
-       #     (x0 - marcador // 2, y0 - marcador // 2),  # superior izquierda
-       #     (x1 - marcador // 2, y0 - marcador // 2),  # superior derecha
-       #     (x0 - marcador // 2, y1 - marcador // 2),  # inferior izquierda
-       #     (x1 - marcador // 2, y1 - marcador // 2),  # inferior derecha
-       # ]
-       # for esquina in esquinas:
-       #     dibujar.rectangle(
-       #         [esquina, (esquina[0] + marcador, esquina[1] + marcador)],
-       #         fill="black"
-       #     )
-
-
-        # Obtener la fecha actual y formatearla
+        # Guardar
         fecha_actual = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-        # Guardar la imagen en formato carta usando nombre_formato y fecha actual
         nombre_archivo = f"{asignatura}_{fecha_actual}.png"
         output_directory = os.path.join(os.getcwd(), f'static/formato/{curso}/{asignatura}')
         os.makedirs(output_directory, exist_ok=True)
-        
+
         output_path = os.path.join(output_directory, nombre_archivo)
         imagen = imagen.resize((1272, 1647), Image.LANCZOS)
         imagen.save(output_path)
-        return {'ruta': nombre_archivo, 'columnas':total_columnas }
+        return {'ruta': nombre_archivo, 'columnas': 3}
     except Exception as err:
         print('Error al crear el formato:', err)
         return None

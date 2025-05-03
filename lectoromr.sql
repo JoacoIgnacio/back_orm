@@ -104,16 +104,17 @@ INSERT INTO `cursos` (`id`, `curso`, `activo`, `user_id`) VALUES
 DROP TABLE IF EXISTS `pruebas`;
 CREATE TABLE IF NOT EXISTS `pruebas` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `nota` int NOT NULL,
   `respuestas` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `correctas` int NOT NULL,
+  `incorrectas` int NOT NULL,
+  `total_preguntas` int NOT NULL,
   `activo` tinyint(1) NOT NULL,
   `asignatura_id` int DEFAULT NULL,
   `alumno_id` int DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `id_alumno` (`alumno_id`),
   KEY `id_asignatura` (`asignatura_id`) USING BTREE
-) ENGINE=MyISAM AUTO_INCREMENT=52 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
+) ENGINE=MyISAM AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 --
 -- Volcado de datos para la tabla `pruebas`
 --
