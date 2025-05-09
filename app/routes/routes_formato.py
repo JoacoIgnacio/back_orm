@@ -31,35 +31,55 @@ def obtener_imagen_formato_route(curso, asignatura, filename):
 @formato_db_bp.route('/alumnos/<curso>/<asignatura>/descargarFormatos', methods=['GET'])
 def descargar_imagenes_alumnos_route(curso, asignatura):
     try:
-        # Define la carpeta donde se encuentran las imágenes
-        image_directory = os.path.join(os.getcwd(), f'static/alumnos/{curso}/{asignatura}')
+        # Obtener nombres a partir del ID
+        curso_obj = obtener_curso_por_id(curso)
+        asignatura_obj = obtener_asignaturas_por_id(asignatura)
 
-        # Verifica si el directorio existe
+        if not curso_obj or not asignatura_obj:
+            raise FileNotFoundError("Curso o asignatura no válidos")
+
+        nombre_curso = curso_obj['curso']
+        nombre_asignatura = asignatura_obj['asignatura']
+
+        image_directory = os.path.join(os.getcwd(), f'static/alumnos/{nombre_curso}/{nombre_asignatura}')
+        print(f"[INFO] Explorando: {image_directory}")
+
         if not os.path.exists(image_directory):
-            raise FileNotFoundError("Directorio no encontrado")
+            raise FileNotFoundError("Directorio no encontrado, genere los formatos primero.")
 
-        # Crear un archivo ZIP en memoria
-        memory_file = BytesIO()
-        with zipfile.ZipFile(memory_file, 'w') as zf:
-            # Recorrer todos los archivos en el directorio
-            for foldername, subfolders, filenames in os.walk(image_directory):
-                for filename in filenames:
-                    # Ruta completa del archivo
+        # Buscar imágenes válidas (.png, .jpg, .jpeg)
+        imagenes_encontradas = []
+        for foldername, subfolders, filenames in os.walk(image_directory):
+            for filename in filenames:
+                if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
                     file_path = os.path.join(foldername, filename)
-                    # Agregar el archivo al ZIP
-                    zf.write(file_path, os.path.relpath(file_path, image_directory))
-        
+                    arcname = os.path.relpath(file_path, image_directory)
+                    imagenes_encontradas.append((file_path, arcname))
+
+        if len(imagenes_encontradas) == 0:
+            raise Exception("No se encontraron imágenes para descargar. Primero genera los formatos.")
+
+        # Crear ZIP
+        memory_file = BytesIO()
+        with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for file_path, arcname in imagenes_encontradas:
+                zf.write(file_path, arcname)
+                print(f"[OK] Añadido al ZIP: {arcname}")
+
         memory_file.seek(0)
 
-        # Enviar el archivo ZIP al cliente
         return send_file(
             memory_file,
             as_attachment=True,
-            download_name=f'{curso}_{asignatura}_imagenes.zip',
+            download_name=f'{nombre_curso}_{nombre_asignatura}_formatos.zip',
             mimetype='application/zip'
         )
+
     except Exception as err:
+        print(f"[ERROR] {err}")
         return jsonify({"status": False, "error": str(err)}), 404
+
+
     
 @formato_db_bp.route('/formato/<curso>/<asignatura>/generarFormatos', methods=['GET'])
 def generar_formato_alumnos_route(curso, asignatura):
