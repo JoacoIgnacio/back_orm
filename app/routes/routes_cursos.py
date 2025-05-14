@@ -4,9 +4,8 @@ from app.controllers.cursos_controllers import (
     crear_curso,
     obtener_cursos_por_usuario,
     obtener_curso_por_id,
-    obtener_curso_por_nombre,
     actualizar_curso,
-    eliminar_curso
+    eliminar_curso,
 )
 
 cursos_db_bp = Blueprint('cursos_db', __name__)
@@ -62,18 +61,6 @@ def obtener_curso(curso_id):
     except Exception as err:
         return jsonify({"status": False, "error": str(err)}), 500
 
-# Ruta para obtener un curso por su nombre
-@cursos_db_bp.route('/cursos/nombre/<string:nombre>', methods=['GET'])
-def obtener_curso_por_nombre(nombre):
-    try:
-        curso = obtener_curso_por_nombre(nombre)
-        if curso:
-            return jsonify({"status": True, "curso": curso}), 200
-        else:
-            return jsonify({"status": False, 'error': "Curso no encontrado"}), 404
-    except Exception as err:
-        return jsonify({"status": False, "error": str(err)}), 500
-
 # Ruta para actualizar un curso por ID
 @cursos_db_bp.route('/cursos/<int:curso_id>', methods=['PUT'])
 def actualizar_curso_por_id(curso_id):
@@ -88,7 +75,14 @@ def actualizar_curso_por_id(curso_id):
 @cursos_db_bp.route('/cursos/<int:curso_id>', methods=['DELETE'])
 def eliminar_curso_por_id(curso_id):
     try:
-        eliminar_curso(curso_id)
-        return jsonify({"status": True, "mensaje": "Curso eliminado exitosamente"}), 200
+        eliminado, alumnos_eliminados = eliminar_curso(curso_id)
+        if eliminado:
+            return jsonify({
+                "status": True,
+                "mensaje": f"Curso eliminado exitosamente. Alumnos eliminados: {alumnos_eliminados}"
+            }), 200
+        else:
+            return jsonify({"status": False, "error": "Curso no encontrado"}), 404
     except Exception as err:
         return jsonify({"status": False, "error": str(err)}), 500
+
