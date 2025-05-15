@@ -50,13 +50,14 @@ def obtener_usuario_por_id(user_id):
     conexion = obtener_conexion()
     usuario = None
     try:
-        with conexion.cursor() as cursor:  # ✅ DictCursor ya está configurado en la conexión
-            sql = "SELECT username, email FROM users WHERE id = %s"
+        with conexion.cursor() as cursor:
+            sql = "SELECT id, username, email FROM users WHERE id = %s"
             cursor.execute(sql, (user_id,))
             usuario = cursor.fetchone()
-            print("Usuario encontrado:", usuario)  # Verificar el resultado
+            print('Usuario encontrado:', usuario)  # Verificar el resultado como diccionario
     finally:
         conexion.close()
+    
     return usuario
 
 def obtener_usuarios():
