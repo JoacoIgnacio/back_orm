@@ -69,11 +69,13 @@ def obtener_todas_las_asignaturas():
 def obtener_asignaturas_por_curso_route(curso_id):
     try:
         asignaturas = obtener_asignaturas_por_curso(curso_id)
-        return jsonify({"status": True, "asignaturas": asignaturas}), 200
-    except Exception as err:
-        return jsonify({"status": False, "error": str(err)}), 500
+        if not asignaturas:
+            return jsonify({'status': False, 'mensaje': 'No hay asignaturas para este curso.'}), 200
+
+        return jsonify({'status': True, 'asignaturas': asignaturas}), 200
+    except Exception as e:
+        return jsonify({'status': False, 'error': str(e)}), 500
     
-   
 # Ruta para obtener una hoja de respuestas por ID
 @asignaturas_db_bp.route('/asignaturas/<int:asignaturas_id>', methods=['GET'])
 def obtener_asignaturas_por_id_route(asignaturas_id):

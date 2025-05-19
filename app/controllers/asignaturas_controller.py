@@ -3,7 +3,7 @@ import json
 from typing import List, Dict
 import shutil
 import os
-
+import base64
 
 def crear_asignaturas(asignaturas):
     try:
@@ -37,20 +37,23 @@ def crear_asignaturas(asignaturas):
 
 
 def obtener_asignaturas_por_curso(curso_id):
-    asignaturas = None
+    conexion = obtener_conexion()
     try:
-        conexion = obtener_conexion()
         with conexion.cursor() as cursor:
-            sql = "SELECT * FROM asignaturas WHERE curso_id = %s"
-            cursor.execute(sql, (curso_id,))
+            query = """
+                SELECT id, asignatura, alternativas, preguntas, respuestas, curso_id, total_columnas
+                FROM asignaturas
+                WHERE curso_id = %s
+            """
+            cursor.execute(query, (curso_id,))
             asignaturas = cursor.fetchall()
-    except Exception as err:
-        print(f'Error al obtener asignaturas para el curso con ID {curso_id}: {err}')
+            print("Asignaturas obtenidas:", asignaturas)
+            return asignaturas
+    except Exception as e:
+        print(f"Error al obtener asignaturas para el curso con ID {curso_id}:", e)
+        return None
     finally:
-        if conexion:
-            conexion.close()
-    
-    return asignaturas
+        conexion.close()
 
 def obtener_asignaturas():
     asignaturas = []

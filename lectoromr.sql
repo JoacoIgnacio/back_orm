@@ -53,15 +53,16 @@ INSERT INTO `alumnos` (`id`, `nombre`, `apellido`, `curso_id`) VALUES
 
 DROP TABLE IF EXISTS `asignaturas`;
 CREATE TABLE IF NOT EXISTS `asignaturas` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `asignatura` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `alternativas` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `preguntas` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `respuestas` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `curso_id` int NOT NULL,
-  `ruta_formato` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `total_columnas` int DEFAULT NULL,
-  PRIMARY KEY (`id`)
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    asignatura VARCHAR(255) NOT NULL,
+    alternativas INT NOT NULL,
+    preguntas JSON NOT NULL,
+    respuestas JSON NOT NULL,
+    curso_id INT NOT NULL,
+    formato_imagen LONGBLOB,                -- Almacena la imagen de la hoja de respuestas en la base de datos
+    total_columnas INT NOT NULL DEFAULT 1,  -- Total de columnas (1, 2 o 3)
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB AUTO_INCREMENT=108 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
