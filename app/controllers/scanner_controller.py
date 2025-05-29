@@ -63,7 +63,7 @@ def agrupar_por_filas(contornos, tolerancia=25):
 
 def extraer_respuestas(imagen_recortada, max_alternativas,answer_key):
     gris = cv2.cvtColor(imagen_recortada, cv2.COLOR_BGR2GRAY)
-    gris = aumentar_brillo(gris, alpha=1.2, beta=20)
+    gris = aumentar_brillo(gris, alpha=1.2, beta=30)
 
     umbral = cv2.adaptiveThreshold(gris, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
                                    cv2.THRESH_BINARY_INV, 57, 5)
