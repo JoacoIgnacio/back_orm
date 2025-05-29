@@ -1,5 +1,6 @@
 # app/DB/controllers/pruebas_controller.py
 from app.BD.conexion import obtener_conexion
+import ast
 
 def crear_prueba(prueba):
     try:
@@ -115,34 +116,46 @@ def eliminar_prueba(prueba_id):
     finally:
         if conexion:
             conexion.close()
+
 def obtener_notas_por_asignatura_controller(asignatura_id):
-    conexion = obtener_conexion()
     try:
+        conexion = obtener_conexion()
         with conexion.cursor() as cursor:
             cursor.execute("""
-                SELECT pruebas.id, alumnos.nombre, alumnos.apellido, 
-                       pruebas.correctas, pruebas.total_preguntas, pruebas.respuestas
-                FROM pruebas
-                JOIN alumnos ON pruebas.alumno_id = alumnos.id
-                WHERE pruebas.asignatura_id = %s
+                SELECT pr.id, al.nombre, al.apellido, pr.correctas, pr.total_preguntas, pr.respuestas
+                FROM pruebas pr
+                JOIN alumnos al ON pr.alumno_id = al.id
+                WHERE pr.asignatura_id = %s
             """, (asignatura_id,))
-
             resultados = cursor.fetchall()
+
+            #print("Resultados consulta notas:", resultados)  # DEBUG
 
             notas = []
             for fila in resultados:
-                nombre_completo = f"{fila[1]} {fila[2]}"
-                notas.append({
-                    "id": fila[0],  # ID de la prueba (necesario para eliminar)
-                    "nombre": nombre_completo,
-                    "correctas": fila[3],
-                    "total_preguntas": fila[4],
-                    "respuestas": fila[5]
-                })
+                try:
+                    respuestas_raw = fila["respuestas"]
+
+                    if isinstance(respuestas_raw, str):
+                        respuestas_raw = respuestas_raw.strip().replace('[', '').replace(']', '')
+                        respuestas = [int(r.strip()) for r in respuestas_raw.split(',') if r.strip().isdigit()]
+                    elif isinstance(respuestas_raw, list):
+                        respuestas = respuestas_raw
+                    else:
+                        respuestas = []
+
+                    notas.append({
+                        "id": fila["id"],
+                        "nombre": fila["nombre"],
+                        "apellido": fila["apellido"],
+                        "correctas": fila["correctas"],
+                        "total_preguntas": fila["total_preguntas"],
+                        "respuestas": respuestas
+                    })
+                except Exception as err:
+                    print(f"❌ Error al procesar fila: {fila} -> {err}")
 
             return notas
-    except Exception as e:
-        print("Error al obtener notas:", str(e))
-        return None
-    finally:
-        conexion.close()
+    except Exception as error:
+        print(f"❌ Error al obtener notas: {error}")
+        return []

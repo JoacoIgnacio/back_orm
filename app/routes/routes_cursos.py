@@ -33,6 +33,21 @@ def obtener_cursos_por_usuario_id(user_id):
         return jsonify({"status": True, "cursos": cursos}), 200
     except Exception as err:
         return jsonify({"status": False, "error": str(err)}), 500
+
+# Ruta para eliminar un curso por ID
+@cursos_db_bp.route('/cursos/<int:curso_id>', methods=['DELETE'])
+def eliminar_curso_por_id(curso_id):
+    print(f"ID recibido para eliminar: {curso_id}")  # 🧪 Agrega este print
+
+    eliminado, alumnos_eliminados = eliminar_curso(curso_id)
+    if eliminado:
+        return jsonify({
+            "status": True,
+            "mensaje": f"Curso eliminado exitosamente. Alumnos eliminados: {alumnos_eliminados}"
+        }), 200
+    else:
+        return jsonify({"status": False, "error": "Curso no encontrado"}), 404
+
     
 # Ruta para eliminar todos los cursos de un usuario (si es lo que deseas)
 @cursos_db_bp.route('/cursos/user_id/<int:user_id>', methods=['DELETE'])
@@ -68,21 +83,6 @@ def actualizar_curso_por_id(curso_id):
         nuevos_datos = request.json
         actualizar_curso(curso_id, nuevos_datos)
         return jsonify({"status": True, "mensaje": "Curso actualizado exitosamente"}), 200
-    except Exception as err:
-        return jsonify({"status": False, "error": str(err)}), 500
-
-# Ruta para eliminar un curso por ID
-@cursos_db_bp.route('/cursos/<int:curso_id>', methods=['DELETE'])
-def eliminar_curso_por_id(curso_id):
-    try:
-        eliminado, alumnos_eliminados = eliminar_curso(curso_id)
-        if eliminado:
-            return jsonify({
-                "status": True,
-                "mensaje": f"Curso eliminado exitosamente. Alumnos eliminados: {alumnos_eliminados}"
-            }), 200
-        else:
-            return jsonify({"status": False, "error": "Curso no encontrado"}), 404
     except Exception as err:
         return jsonify({"status": False, "error": str(err)}), 500
 

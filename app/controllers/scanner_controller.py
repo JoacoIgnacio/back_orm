@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
 import base64
+from PIL import Image
+import io
 
 def ordenar_contornos(contornos):
     return sorted(contornos, key=lambda c: (cv2.boundingRect(c)[1], cv2.boundingRect(c)[0]))
@@ -61,7 +63,7 @@ def agrupar_por_filas(contornos, tolerancia=25):
 
 def extraer_respuestas(imagen_recortada, max_alternativas,answer_key):
     gris = cv2.cvtColor(imagen_recortada, cv2.COLOR_BGR2GRAY)
-    gris = aumentar_brillo(gris, alpha=1.2, beta=40)
+    gris = aumentar_brillo(gris, alpha=1.2, beta=20)
 
     umbral = cv2.adaptiveThreshold(gris, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
                                    cv2.THRESH_BINARY_INV, 57, 5)
@@ -142,8 +144,8 @@ def extraer_respuestas(imagen_recortada, max_alternativas,answer_key):
             respuestas_lineal.append(col_r[fila_idx])
             burbujas_lineal.append(col_b[fila_idx])
 
-    print(f"Total burbujas detectadas: {len(burbujas)}")
-    print(f"Total preguntas detectadas: {len(respuestas_lineal)}")
+    """print(f"Total burbujas detectadas: {len(burbujas)}")
+    print(f"Total preguntas detectadas: {len(respuestas_lineal)}")"""
 
     return respuestas_lineal, burbujas_lineal, imagen_recortada
 
@@ -154,10 +156,9 @@ def corregir_respuestas(respuestas, answer_key):
             correctas += 1
     return correctas, len(answer_key)
 
-def procesar_y_evaluar_prueba(image_path, alumno, alternativas, answer_key):
-    imagen = cv2.imread(image_path)
-    if imagen is None:
-        return {"error": "No se pudo cargar la imagen."}
+def procesar_y_evaluar_prueba(imagen, formato, alumno, alternativas, answer_key, total_columnas):
+    if imagen is None or formato is None:
+        return {"error": "No se pudo cargar la imagen o el formato."}
 
     answer_key = {int(k): int(v) for k, v in answer_key.items()}
 

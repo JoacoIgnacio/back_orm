@@ -1,40 +1,91 @@
 from app.BD.conexion import obtener_conexion
 import json
-from typing import List, Dict
 import shutil
 import os
-import base64
+import traceback
+import sys
 
 def crear_asignaturas(asignaturas):
     try:
         conexion = obtener_conexion()
         with conexion.cursor() as cursor:
-            # Convertir la lista de preguntas y respuestas a una cadena JSON
+            print("🟡 Conexión abierta y cursor iniciado", file=sys.stderr)
+
+            # Validación previa
+            print("🔍 Datos recibidos para crear asignatura:", asignaturas, file=sys.stderr)
+
+            # Convertir a JSON string para guardar en base de datos
             preguntas_json = json.dumps(asignaturas['preguntas'])
             respuestas_json = json.dumps(asignaturas['respuestas'])
 
-            # Insertar nueva hoja de respuestas
-            sql = "INSERT INTO asignaturas (asignatura, alternativas, preguntas, respuestas, curso_id) VALUES (%s, %s, %s, %s, %s)"
-            cursor.execute(sql, (asignaturas['asignatura'], asignaturas['alternativas'], preguntas_json, respuestas_json, asignaturas['curso_id']))
+            print("🟡 Ejecutando INSERT...", file=sys.stderr)
+            sql = """
+                INSERT INTO asignaturas (asignatura, alternativas, preguntas, respuestas, curso_id)
+                VALUES (%s, %s, %s, %s, %s)
+            """
+            cursor.execute(sql, (
+                asignaturas['asignatura'],
+                asignaturas['alternativas'],
+                preguntas_json,
+                respuestas_json,
+                asignaturas['curso_id']
+            ))
             conexion.commit()
+            print("✅ INSERT realizado correctamente", file=sys.stderr)
 
-            # Obtener el ID del registro insertado
+            # Obtener el ID recién creado
             id_asignatura = cursor.lastrowid
 
-            # Consultar el registro completo recién insertado
+            # Consultar el registro para retornarlo
             sql_select = "SELECT * FROM asignaturas WHERE id = %s"
             cursor.execute(sql_select, (id_asignatura,))
             registro = cursor.fetchone()
+            print("📄 Registro recuperado:", registro, file=sys.stderr)
 
-        print('Hoja de respuestas creada exitosamente')
     except Exception as err:
-        print('Error al crear hoja de respuestas:', err)
+        print("❌ ERROR al crear la asignatura:", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
         registro = None
+
     finally:
         if conexion:
             conexion.close()
-    return {"id": registro[0], "asignatura": registro[1], "alternativas": registro[2], "preguntas": registro[3], "respuestas": registro[4], "curso_id": registro[5]}
+            print("🔒 Conexión cerrada", file=sys.stderr)
 
+    if registro:
+        return {
+            "id": registro["id"],
+            "asignatura": registro["asignatura"],
+            "alternativas": registro["alternativas"],
+            "preguntas": json.loads(registro["preguntas"]) if registro["preguntas"] else [],
+            "respuestas": json.loads(registro["respuestas"]) if registro["respuestas"] else [],
+            "curso_id": registro["curso_id"],
+            "formato_imagen": registro["formato_imagen"],
+            "total_columnas": registro["total_columnas"],
+            "fecha_creacion": registro["fecha_creacion"],
+            "fecha_actualizacion": registro["fecha_actualizacion"]
+        }
+
+    else:
+        print("⚠️ No se pudo crear ni recuperar la asignatura", file=sys.stderr)
+        return None
+
+def actualizar_asignaturas(asignaturas_id, formato_imagen_base64, columnas):
+    try:
+        conexion = obtener_conexion()
+        with conexion.cursor() as cursor:
+            sql = "UPDATE asignaturas SET formato_imagen = %s, total_columnas = %s WHERE id = %s"
+            cursor.execute(sql, (formato_imagen_base64, columnas, asignaturas_id))
+            print("Actualizando asignatura con ID:", asignaturas_id)
+            print("Longitud del formato base64:", len(formato_imagen_base64))
+
+        conexion.commit()
+    except Exception as err:
+        import traceback
+        print('ERROR al actualizar:', traceback.format_exc())
+    finally:
+        if conexion:
+            conexion.close()
 
 def obtener_asignaturas_por_curso(curso_id):
     conexion = obtener_conexion()
@@ -75,94 +126,71 @@ def obtener_asignaturas_por_id(asignaturas_id):
     try:
         conexion = obtener_conexion()
         with conexion.cursor() as cursor:
-            sql = "SELECT * FROM asignaturas WHERE id = %s"
-            cursor.execute(sql, (asignaturas_id,))
-            asignatura = cursor.fetchone()
-            
-            # Verificar si se obtuvo un resultado antes de acceder a los índices
-            if not asignatura:
-                print(f"Error: No se encontró la asignatura con ID {asignaturas_id}")
-                return None
+            # Conversión segura del ID a entero
+            cursor.execute("SELECT * FROM asignaturas WHERE id = %s", (int(asignaturas_id),))
+            registro = cursor.fetchone()
 
-            # Verificar la cantidad de columnas antes de acceder a ellas
-            asignatura_dict = {
-                "id": asignatura[0],
-                "asignatura": asignatura[1],
-                "alternativas": asignatura[2],
-                "preguntas": json.loads(asignatura[3]) if asignatura[3] else [],
-                "respuestas": json.loads(asignatura[4]) if asignatura[4] else [],
-                "curso_id": asignatura[5],
-                "ruta_formato": asignatura[6] if len(asignatura) > 6 else None,
-                "total_columnas": asignatura[7] if len(asignatura) > 7 else None
-            }
+            if registro:
+                asignatura = {
+                    "id": registro["id"],
+                    "asignatura": registro["asignatura"],
+                    "alternativas": registro["alternativas"],
+                    "preguntas": json.loads(registro["preguntas"]) if registro["preguntas"] else [],
+                    "respuestas": json.loads(registro["respuestas"]) if registro["respuestas"] else [],
+                    "curso_id": registro["curso_id"],
+                    "formato_imagen": registro["formato_imagen"],
+                    "total_columnas": registro["total_columnas"],
+                    "fecha_creacion": registro["fecha_creacion"],
+                    "fecha_actualizacion": registro["fecha_actualizacion"]
+                }
+            else:
+                print(f"⚠️ No se encontró la asignatura con ID {asignaturas_id}")
 
     except Exception as err:
-        print(f'Error al obtener hoja de respuestas con ID {asignaturas_id}:', err)
-        return None  # Evita devolver datos corruptos
-
+        import traceback
+        print(f'❌ Error al obtener asignatura con ID {asignaturas_id}:\n', traceback.format_exc())
     finally:
         if conexion:
             conexion.close()
 
-    return asignatura_dict
+    return asignatura
 
-def actualizar_asignaturas(asignaturas_id, ruta_formato, columnas):
-    try:
-        conexion = obtener_conexion()
-        with conexion.cursor() as cursor:
-            sql = "UPDATE asignaturas SET ruta_formato = %s, total_columnas = %s WHERE id = %s"
-            cursor.execute(sql, (ruta_formato, columnas, asignaturas_id))
-        conexion.commit()
-    except Exception as err:
-        print(f'Error al actualizar hoja de respuestas con ID {asignaturas_id}:', err)
-    finally:
-        if conexion:
-            conexion.close()
 
 def eliminar_asignatura(id):
     conexion = obtener_conexion()
     try:
         with conexion.cursor() as cursor:
-            # Obtener curso_id y nombre antes de eliminar
-            cursor.execute("SELECT curso_id, nombre FROM asignaturas WHERE id = %s", (id,))
+            cursor.execute("SELECT curso_id, asignatura FROM asignaturas WHERE id = %s", (id,))
             result = cursor.fetchone()
             if result:
                 curso_id, nombre_asignatura = result
-
                 cursor.execute("DELETE FROM asignaturas WHERE id = %s", (id,))
                 conexion.commit()
 
-                # Eliminar carpetas relacionadas
+                # Eliminar carpetas si aún existen por alguna razón
                 ruta_formato = os.path.join("static", "formato", str(curso_id), nombre_asignatura)
                 ruta_alumnos = os.path.join("static", "alumnos", str(curso_id), nombre_asignatura)
-
                 for ruta in [ruta_formato, ruta_alumnos]:
                     if os.path.exists(ruta):
                         shutil.rmtree(ruta)
     finally:
         conexion.close()
-        
+
 def eliminar_asignatura_y_pruebas(id):
     conexion = obtener_conexion()
     try:
         with conexion.cursor() as cursor:
-            # Obtener curso_id y nombre de la asignatura
             cursor.execute("SELECT curso_id, asignatura FROM asignaturas WHERE id = %s", (id,))
             result = cursor.fetchone()
             if result:
                 curso_id, nombre_asignatura = result
 
-                # 1. Eliminar todas las pruebas asociadas a la asignatura
                 cursor.execute("DELETE FROM pruebas WHERE asignatura_id = %s", (id,))
-
-                # 2. Eliminar la asignatura
                 cursor.execute("DELETE FROM asignaturas WHERE id = %s", (id,))
                 conexion.commit()
 
-                # 3. Eliminar carpetas relacionadas (formato y alumnos)
                 ruta_formato = os.path.join("static", "formato", str(curso_id), nombre_asignatura)
                 ruta_alumnos = os.path.join("static", "alumnos", str(curso_id), nombre_asignatura)
-
                 for ruta in [ruta_formato, ruta_alumnos]:
                     if os.path.exists(ruta):
                         shutil.rmtree(ruta)

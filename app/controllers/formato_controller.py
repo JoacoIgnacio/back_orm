@@ -3,15 +3,24 @@ import os
 from datetime import datetime
 import qrcode
 import json
+from PIL import Image, ImageDraw, ImageFont
+from datetime import datetime
+import os
+import base64
+from io import BytesIO
 
 def crear_opciones(alternativas):
     todas_opciones = ['A', 'B', 'C', 'D', 'E']
     opciones = todas_opciones[:alternativas]
     return opciones
 
+def crear_opciones(alternativas):
+    todas_opciones = ['A', 'B', 'C', 'D', 'E']
+    return todas_opciones[:alternativas]
+
 def crear_formato(curso, alternativas, asignatura, num_preguntas):
     try:
-        # Configuración inicial
+        print("📄 Generando formato con", num_preguntas, "preguntas y", alternativas, "alternativas")
         opciones = crear_opciones(int(alternativas))
         ancho_imagen = 1272 * 4
         alto_imagen = 1647 * 4
@@ -24,7 +33,6 @@ def crear_formato(curso, alternativas, asignatura, num_preguntas):
         margen_superior = 350 * 4
         margen_izquierdo = 50 * 4
         espacio_entre_columnas = 350 * 4
-
         preguntas_por_col = 24
 
         imagen = Image.new("RGBA", (ancho_imagen, alto_imagen), color_fondo)
@@ -37,7 +45,6 @@ def crear_formato(curso, alternativas, asignatura, num_preguntas):
         dibujar.text((margen_izquierdo, 400), "Nombre:", fill=color_texto, font=fuente_labels)
         dibujar.text((margen_izquierdo, 720), "Apellido:", fill=color_texto, font=fuente_labels)
 
-        # Inicializar límites del recuadro
         min_x = float('inf')
         min_y = float('inf')
         max_x = float('-inf')
@@ -76,32 +83,27 @@ def crear_formato(curso, alternativas, asignatura, num_preguntas):
             y_pregunta_centrada = posicion_y_pregunta - (alto_pregunta / 0.5 - radio_circulo)
             dibujar.text((x_pregunta, y_pregunta_centrada), f'{i} ', fill=color_texto, font=fuente)
 
-            # Actualizar límites
             min_x = min(min_x, posicion_x_pregunta + 200)
             min_y = min(min_y, posicion_y_pregunta - radio_circulo)
             max_y = max(max_y, y_circulo + radio_circulo)
 
-        # Dibujar el recuadro adaptado
         x0 = min_x - 50
         y0 = min_y - 100
         x1 = max_x + 50
         y1 = max_y + 100
         dibujar.rectangle([(x0, y0), (x1, y1)], outline="black", width=16)
 
-        # Guardar
-        fecha_actual = datetime.now().strftime("%Y%m%d_%H%M%S")
-        nombre_archivo = f"{asignatura}_{fecha_actual}.png"
-        output_directory = os.path.join(os.getcwd(), f'static/formato/{curso}/{asignatura}')
-        os.makedirs(output_directory, exist_ok=True)
-
-        output_path = os.path.join(output_directory, nombre_archivo)
+        # Redimensionar y convertir a base64
         imagen = imagen.resize((1272, 1647), Image.LANCZOS)
-        imagen.save(output_path)
-        return {'ruta': nombre_archivo, 'columnas': 3}
+        buffered = BytesIO()
+        imagen.save(buffered, format="PNG")
+        img_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
+        print("✅ Formato generado correctamente. Tamaño base64:", len(img_base64))
+        return {'formato_base64': img_base64, 'columnas': 3}
     except Exception as err:
-        print('Error al crear el formato:', err)
+        import traceback
+        print("❌ ERROR en crear_formato:\n", traceback.format_exc())
         return None
-
 
 def agregar_qr_alumno(alumnos, curso, asignatura_id, asignatura, ruta_formato):
     try:

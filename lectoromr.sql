@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS `asignaturas` (
     preguntas JSON NOT NULL,
     respuestas JSON NOT NULL,
     curso_id INT NOT NULL,
-    formato_imagen LONGBLOB,                -- Almacena la imagen de la hoja de respuestas en la base de datos
+    formato_imagen LONGTEXT,                -- Almacena la imagen de la hoja de respuestas en la base de datos
     total_columnas INT NOT NULL DEFAULT 1,  -- Total de columnas (1, 2 o 3)
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -67,8 +67,8 @@ CREATE TABLE IF NOT EXISTS `asignaturas` (
 
 --
 -- Volcado de datos para la tabla `asignaturas`
---
 
+ 
 INSERT INTO `asignaturas` (`id`, `asignatura`, `alternativas`, `preguntas`, `respuestas`, `curso_id`, `ruta_formato`, `total_columnas`) VALUES
 (106, 'Asignatura 1', '4', '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]', '[0, 1, 2, 3, 2, 1, 0, 1, 2, 3, 3, 2, 1, 0, 1, 2, 3, 2, 1, 0]', 108, 'Asignatura 1_20250117_122914.png', 2),
 (107, 'Asignatura 2', '4', '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]', '[0, 1, 2, 3, 2, 2, 0, 1, 2, 3, 2, 1, 0, 1, 2, 3, 2, 1, 0, 1]', 108, 'Asignatura 2_20250117_124210.png', 2);

@@ -49,24 +49,42 @@ def eliminar_curso(curso_id):
     try:
         conexion = obtener_conexion()
         with conexion.cursor() as cursor:
-            # Verificar si el curso existe
+            print(f"🔍 Verificando existencia del curso con ID: {curso_id}")
             cursor.execute("SELECT id FROM cursos WHERE id = %s", (curso_id,))
             curso = cursor.fetchone()
-            if not curso:
-                return False, 0  # El curso no existe
+            print(f"📌 Resultado de SELECT curso: {curso}")
 
-            # Eliminar todos los alumnos asociados
+            if not curso:
+                print("⚠️ Curso no encontrado en la BD")
+                return False, 0
+
+            # Obtener asignaturas
+            cursor.execute("SELECT id FROM asignaturas WHERE curso_id = %s", (curso_id,))
+            asignaturas = cursor.fetchall()
+            print(f"📋 Asignaturas encontradas: {asignaturas}")
+
+            for asignatura in asignaturas:
+                asignatura_id = asignatura[0] if isinstance(asignatura, tuple) else asignatura.get("id")
+                print(f"🧹 Eliminando pruebas de asignatura {asignatura_id}")
+                cursor.execute("DELETE FROM pruebas WHERE asignatura_id = %s", (asignatura_id,))
+
+            print("🧹 Eliminando asignaturas del curso")
+            cursor.execute("DELETE FROM asignaturas WHERE curso_id = %s", (curso_id,))
+
+            print("🧹 Eliminando alumnos del curso")
             cursor.execute("DELETE FROM alumnos WHERE curso_id = %s", (curso_id,))
             alumnos_eliminados = cursor.rowcount
 
-            # Eliminar el curso
+            print("🧹 Eliminando curso")
             cursor.execute("DELETE FROM cursos WHERE id = %s", (curso_id,))
+
             conexion.commit()
             return True, alumnos_eliminados
     except Exception as err:
-        print(f'Error al eliminar curso con ID {curso_id}: {err}')
+        print(f'🚨 Error al eliminar curso con ID {curso_id}: {err}')
         return False, 0
     finally:
         if conexion:
             conexion.close()
+
 
