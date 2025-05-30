@@ -50,6 +50,7 @@ def obtener_alumno_por_id_route(alumno_id):
         else:
             return jsonify({"mensaje": "Alumno no encontrado"}), 404
     except Exception as err:
+        print(f'Error en obtener_alumno_por_id_route: {err}')
         return jsonify({"error": str(err)}), 500
 
 # Ruta para actualizar un alumno por ID

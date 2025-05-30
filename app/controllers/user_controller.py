@@ -1,11 +1,44 @@
 from app.BD.conexion import obtener_conexion
+from flask_bcrypt import Bcrypt
+
+bcrypt = Bcrypt()
+
+def verificar_credenciales(email, contrasena):
+    conexion = obtener_conexion()
+    usuario = None
+    try:
+        with conexion.cursor() as cursor:
+            sql = "SELECT id, username, email, contrasena, activo FROM users WHERE email = %s"
+            cursor.execute(sql, (email,))
+            usuario = cursor.fetchone()
+
+            if usuario:
+                print("Usuario encontrado en login:", usuario)  # ✅ Verificar el usuario obtenido
+                print("Contraseña ingresada:", contrasena)
+                print("Hash almacenado:", usuario['contrasena'])
+
+                if bcrypt.check_password_hash(usuario['contrasena'], contrasena):
+                    print("✅ Contraseña correcta")
+                    return usuario
+                else:
+                    print("❌ Contraseña incorrecta")
+                    return None
+    finally:
+        conexion.close()
+    return None
 
 def crear_usuario(usuario):
     try:
         conexion = obtener_conexion()
         with conexion.cursor() as cursor:
+            contrasena_hash = bcrypt.generate_password_hash(usuario['contrasena']).decode('utf-8')
             sql = "INSERT INTO users (username, email, contrasena, activo) VALUES (%s, %s, %s, %s)"
-            cursor.execute(sql, (usuario['username'], usuario['email'], usuario['contrasena'], usuario['activo']))
+            cursor.execute(sql, (
+                usuario['username'],
+                usuario['email'],
+                contrasena_hash,
+                usuario.get('activo', True)
+            ))
         conexion.commit()
     except Exception as err:
         print('Error al crear usuario:', err)
@@ -13,35 +46,34 @@ def crear_usuario(usuario):
         if conexion:
             conexion.close()
 
-def obtener_usuarios():
-    usuarios = []
-    try:
-        conexion = obtener_conexion()
-        with conexion.cursor() as cursor:
-            sql = "SELECT * FROM users"
-            cursor.execute(sql)
-            usuarios = cursor.fetchall()
-    except Exception as err:
-        print('Error al obtener usuarios:', err)
-    finally:
-        if conexion:
-            conexion.close()
-    return usuarios
-
 def obtener_usuario_por_id(user_id):
+    conexion = obtener_conexion()
     usuario = None
     try:
-        conexion = obtener_conexion()
         with conexion.cursor() as cursor:
-            sql = "SELECT * FROM users WHERE id = %s"
+            sql = "SELECT id, username, email FROM users WHERE id = %s"
             cursor.execute(sql, (user_id,))
             usuario = cursor.fetchone()
-    except Exception as err:
-        print(f'Error al obtener usuario con ID {user_id}:', err)
+            print('Usuario encontrado:', usuario)  # Verificar el resultado como diccionario
     finally:
-        if conexion:
-            conexion.close()
+        conexion.close()
+    
     return usuario
+
+def obtener_usuarios():
+    conexion = obtener_conexion()
+    usuarios = []
+    try:
+        with conexion.cursor() as cursor:
+            sql = "SELECT id, username, email FROM users"
+            cursor.execute(sql)
+            usuarios = cursor.fetchall()
+            print("Usuarios encontrados:", usuarios)
+    finally:
+        conexion.close()
+    return usuarios
+
+
 
 def actualizar_usuario(user_id, nuevos_datos):
     try:

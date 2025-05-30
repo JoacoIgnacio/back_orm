@@ -1,12 +1,26 @@
 # app/DB/controllers/pruebas_controller.py
 from app.BD.conexion import obtener_conexion
+import ast
 
 def crear_prueba(prueba):
     try:
         conexion = obtener_conexion()
         with conexion.cursor() as cursor:
-            sql = "INSERT INTO pruebas (nota, respuestas, activo, asignatura_id, alumno_id) VALUES (%s, %s, %s, %s, %s)"
-            cursor.execute(sql, (prueba['nota'], prueba['respuestas'], prueba['activo'], prueba['asignatura_id'], prueba['alumno_id']))
+            sql = """
+                INSERT INTO pruebas (
+                    respuestas, correctas, incorrectas, total_preguntas, activo, asignatura_id, alumno_id
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """
+            cursor.execute(sql, (
+                prueba['respuestas'],
+                prueba['correctas'],
+                prueba['incorrectas'],
+                prueba['total_preguntas'],
+                prueba['activo'],
+                prueba['asignatura_id'],
+                prueba['alumno_id']
+            ))
+
             conexion.commit()
     except Exception as err:
         print('Error al crear prueba:', err)
@@ -64,13 +78,24 @@ def actualizar_prueba(prueba_id, nuevos_datos):
         conexion = obtener_conexion()
         with conexion.cursor() as cursor:
             # Actualizar una prueba por ID
-            sql = "UPDATE pruebas SET nota = %s, activo = %s, id_hoja_de_respuestas = %s WHERE id = %s"
+            sql = """
+                UPDATE pruebas SET 
+                    respuestas = %s,
+                    correctas = %s,
+                    incorrectas = %s,
+                    total_preguntas = %s,
+                    activo = %s
+                WHERE id = %s
+            """
             cursor.execute(sql, (
-                nuevos_datos['nota'],
+                nuevos_datos['respuestas'],
+                nuevos_datos['correctas'],
+                nuevos_datos['incorrectas'],
+                nuevos_datos['total_preguntas'],
                 nuevos_datos['activo'],
-                nuevos_datos['id_hoja_de_respuestas'],
                 prueba_id
             ))
+
         conexion.commit()
     except Exception as err:
         print(f'Error al actualizar prueba con ID {prueba_id}:', err)
@@ -91,3 +116,46 @@ def eliminar_prueba(prueba_id):
     finally:
         if conexion:
             conexion.close()
+
+def obtener_notas_por_asignatura_controller(asignatura_id):
+    try:
+        conexion = obtener_conexion()
+        with conexion.cursor() as cursor:
+            cursor.execute("""
+                SELECT pr.id, al.nombre, al.apellido, pr.correctas, pr.total_preguntas, pr.respuestas
+                FROM pruebas pr
+                JOIN alumnos al ON pr.alumno_id = al.id
+                WHERE pr.asignatura_id = %s
+            """, (asignatura_id,))
+            resultados = cursor.fetchall()
+
+            #print("Resultados consulta notas:", resultados)  # DEBUG
+
+            notas = []
+            for fila in resultados:
+                try:
+                    respuestas_raw = fila["respuestas"]
+
+                    if isinstance(respuestas_raw, str):
+                        respuestas_raw = respuestas_raw.strip().replace('[', '').replace(']', '')
+                        respuestas = [int(r.strip()) for r in respuestas_raw.split(',') if r.strip().isdigit()]
+                    elif isinstance(respuestas_raw, list):
+                        respuestas = respuestas_raw
+                    else:
+                        respuestas = []
+
+                    notas.append({
+                        "id": fila["id"],
+                        "nombre": fila["nombre"],
+                        "apellido": fila["apellido"],
+                        "correctas": fila["correctas"],
+                        "total_preguntas": fila["total_preguntas"],
+                        "respuestas": respuestas
+                    })
+                except Exception as err:
+                    print(f"❌ Error al procesar fila: {fila} -> {err}")
+
+            return notas
+    except Exception as error:
+        print(f"❌ Error al obtener notas: {error}")
+        return []

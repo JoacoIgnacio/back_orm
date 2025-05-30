@@ -1,107 +1,84 @@
-import json
 from flask import Blueprint, request, jsonify
-from app.controllers.scanner_controller import (
-    process_image,
-    solve_test
-)
+from app.controllers.scanner_controller import procesar_y_evaluar_prueba
 from app.controllers.pruebas_controller import crear_prueba
-from werkzeug.utils import secure_filename
-import os
+from app.controllers.asignaturas_controller import obtener_asignaturas_por_id
+import json
+import base64
+import cv2
+import numpy as np
+from PIL import Image
+import io
 
 scanner_db_bp = Blueprint('scanner', __name__)
 
-# Ruta para procesar la imagen
 @scanner_db_bp.route('/scanner', methods=['POST'])
 def scanner():
     try:
-        alumno = json.loads(request.form.get('alumno'))
-        alternativas = request.form.get('alternativas')
-        answer_key = json.loads(request.form.get('ANSWER_KEY'))
-        asignatura_id = request.form.get('id')
-        total_columnas = request.form.get('total_columnas')
-        result = obtener_imagen(request, alumno.get('id'))
-        
-        # Verificar si result contiene un error
-        if isinstance(result, dict) and 'error' in result:
-            return jsonify(result)  # Retorna el error directamente
+        # Extraer y convertir datos del formulario
+        alumno = json.loads(request.form['alumno'])
+        alternativas = int(request.form['alternativas'])
+        answer_key = json.loads(request.form['ANSWER_KEY'])
+        asignatura_id = int(request.form['id'])
+        columnas = int(request.form['total_columnas'])
 
-        # Procesar la imagen
-        procesar_imagen = process_image(result, alumno.get('id'), total_columnas)  # Cambia esto según tu lógica de procesamiento
+        # Leer imagen cargada
+        file = request.files.get('image')
+        if not file:
+            return jsonify({"status": False, "mensaje": "Imagen no proporcionada"}), 400
 
-        if procesar_imagen:
-            resolver_prueba = solve_test(answer_key, alternativas, alumno.get('id'))
-            if isinstance(resolver_prueba, dict):
-                nota = resolver_prueba.get('nota', 0.0)
-                imagen_base64 = resolver_prueba.get('image')
-                respuestas_alumno = json.dumps(resolver_prueba.get('respuestas_marcadas'))
-            
-                alumno_id = alumno.get('id')  # Asegúrate de obtener el ID correctamente
-            
-                prueba = {
-                    'asignatura_id': asignatura_id, 
-                    'alumno_id': alumno_id,
-                    'respuestas': respuestas_alumno,
-                    'nota': nota,
-                    'activo': True  # Puedes ajustar esto según tus necesidades
-                }
-                
-                crear_prueba(prueba)
-                
-                return jsonify({"status": True, "mensaje": "Se procesó la imagen", "nota": nota, "image": imagen_base64}), 201
-            else:
-                return jsonify({"status": False, "mensaje": "Error al resolver la prueba"}), 500
-        else:
-            return jsonify({"status": False, "mensaje": "No se pudo procesar la imagen"}), 500
-    except Exception as e:
-        print(f"Error: {e}")
-        return jsonify({"error": str(e)}), 500
+        imagen_pil = Image.open(file.stream).convert('RGB')
+        imagen = cv2.cvtColor(np.array(imagen_pil), cv2.COLOR_RGB2BGR)
 
-def procesar_texto(data_alumno):
-    data_alumno_dict = {}
-    try:
-        for line in data_alumno.split('\n'):
-            key, value = line.split(': ')
-            data_alumno_dict[key.strip()] = value.strip()
-    except ValueError:
-        return jsonify({"error": "Formato de data_alumno no es válido"}), 400
-    
-    # Acceder a los valores dentro del diccionario
-    nombre = data_alumno_dict.get('nombre', '')
-    apellido = data_alumno_dict.get('apellido', '')
-    id_curso = data_alumno_dict.get('id_curso', '')
-    id_alumno = data_alumno_dict.get('id_alumno', '')
+        # Obtener formato desde la base de datos
+        asignatura = obtener_asignaturas_por_id(asignatura_id)
+        if not asignatura or not asignatura.get('formato_imagen'):
+            return jsonify({"status": False, "mensaje": "Formato no encontrado"}), 404
 
-    return {
-        'nombre': nombre,
-        'apellido': apellido,
-        'id_curso': id_curso,
-        'id_alumno': id_alumno
-    }
-    
-def obtener_imagen(request, alumno):
-    try:
-        # Verificar si la solicitud contiene archivos
-        if 'image' not in request.files:
-            return {"error": "No image file provided"}
+        formato_bytes = base64.b64decode(asignatura['formato_imagen'])
+        formato_pil = Image.open(io.BytesIO(formato_bytes)).convert('RGB')
+        formato_cv = cv2.cvtColor(np.array(formato_pil), cv2.COLOR_RGB2BGR)
 
-        # Obtener el archivo de la solicitud
-        file = request.files['image']
+        # Procesar imagen con OpenCV
+        resultado = procesar_y_evaluar_prueba(
+            imagen, formato_cv, alumno, alternativas, answer_key, columnas
+        )
 
-        if file.filename == '':
-            return {"error": "No selected file"}
+        if resultado is None:
+            return jsonify({"status": False, "mensaje": "Error al procesar la imagen"}), 500
 
-        # Asegurarse de que el archivo sea una imagen PNG
-        if not file.filename.lower().endswith('.png'):
-            return {"error": "Invalid file format. Only PNG files are allowed."}
-
-        # Guardar el archivo en una ubicación temporal
-        filename = f"{alumno}.png"
-        filename = secure_filename(filename)
-        file_path = os.path.join('static', filename)
-        file.save(file_path)
-        
-        return file_path  # Devuelve la ruta del archivo guardado
+        return jsonify({
+            "status": True,
+            "mensaje": "Se procesó correctamente",
+            "correctas": resultado['respuestas_correctas'],
+            "incorrectas": resultado['total_preguntas'] - resultado['respuestas_correctas'],
+            "total_preguntas": resultado['total_preguntas'],
+            "respuestas": resultado['respuestas_detectadas'],
+            "image": resultado['imagen']
+        }), 200
 
     except Exception as e:
-        print(f"Error: {e}")
-        return {"error": str(e)}
+        print(f'Error scanner route: {e}')
+        return jsonify({"status": False, "mensaje": str(e)}), 500
+    
+@scanner_db_bp.route('/guardar-prueba', methods=['POST'])
+def guardar_prueba():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"status": False, "mensaje": "No se enviaron datos"}), 400
+
+        prueba = {
+            'asignatura_id': data['asignatura_id'],
+            'alumno_id': data['alumno_id'],
+            'respuestas': json.dumps(data['respuestas']),
+            'correctas': data['correctas'],
+            'incorrectas': data['incorrectas'],
+            'total_preguntas': data['total_preguntas'],
+            'activo': True
+        }
+        crear_prueba(prueba)
+
+        return jsonify({"status": True, "mensaje": "Prueba guardada exitosamente"}), 201
+    except Exception as e:
+        print(f'Error guardar_prueba route: {e}')
+        return jsonify({"status": False, "mensaje": str(e)}), 500
