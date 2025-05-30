@@ -26,3 +26,7 @@ app.register_blueprint(auth_bp)
 
 # Configuración de CORS
 CORS(app)  # Esto permite solicitudes desde cualquier origen
+
+@app.route("/")
+def home():
+    return "✅ Backend Flask desplegado correctamente en Render"
