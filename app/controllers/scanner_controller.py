@@ -7,23 +7,48 @@ import io
 def ordenar_contornos(contornos):
     return sorted(contornos, key=lambda c: (cv2.boundingRect(c)[1], cv2.boundingRect(c)[0]))
 
-def mejorar_brillo(imagen_gray):
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    return clahe.apply(imagen_gray)
-
 def aumentar_brillo(imagen_gray, alpha=1.2, beta=30):
     return cv2.convertScaleAbs(imagen_gray, alpha=alpha, beta=beta)
 
+def aplicar_nitidez(imagen):
+    kernel = np.array([[0, -1, 0],
+                       [-1, 5, -1],
+                       [0, -1, 0]])
+    return cv2.filter2D(imagen, -1, kernel)
+
 def encontrar_marco(imagen):
     gris = cv2.cvtColor(imagen, cv2.COLOR_BGR2GRAY)
-    _, umbral = cv2.threshold(gris, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-    contornos, _ = cv2.findContours(umbral, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contornos = sorted(contornos, key=cv2.contourArea, reverse=True)
+    gris = cv2.GaussianBlur(gris, (5, 5), 0)
+    canny = cv2.Canny(gris, 50, 150)
+
+    # Detectar QR code
+    detector_qr = cv2.QRCodeDetector()
+    _, puntos_qr = detector_qr.detect(gris)
+
+    contorno_qr = None
+    if puntos_qr is not None:
+        puntos_qr = puntos_qr[0].astype(int)
+        contorno_qr = np.array(puntos_qr).reshape((-1, 1, 2))
+
+    contornos, _ = cv2.findContours(canny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contornos = sorted(contornos, key=cv2.contourArea, reverse=True)[:15]
+
     for c in contornos:
+        if contorno_qr is not None:
+            distancia = cv2.matchShapes(c, contorno_qr, cv2.CONTOURS_MATCH_I1, 0.0)
+            if distancia < 0.1:
+                continue
+
         peri = cv2.arcLength(c, True)
         aprox = cv2.approxPolyDP(c, 0.02 * peri, True)
+
         if len(aprox) == 4:
-            return aprox.reshape(4, 2)
+            x, y, w, h = cv2.boundingRect(aprox)
+            aspect_ratio = h / float(w) if w > 0 else 0
+            area = cv2.contourArea(c)
+
+            if area > 2000 and aspect_ratio > 2.5:
+                return aprox.reshape(4, 2)
     return None
 
 def ordenar_puntos(pts):
@@ -61,7 +86,7 @@ def agrupar_por_filas(contornos, tolerancia=25):
             filas.append([contorno])
     return filas
 
-def extraer_respuestas(imagen_recortada, max_alternativas,answer_key):
+def extraer_respuestas(imagen_recortada, max_alternativas, answer_key):
     gris = cv2.cvtColor(imagen_recortada, cv2.COLOR_BGR2GRAY)
     gris = aumentar_brillo(gris, alpha=1.2, beta=30)
 
@@ -81,16 +106,14 @@ def extraer_respuestas(imagen_recortada, max_alternativas,answer_key):
         area = cv2.contourArea(c)
         _, _, w, h = cv2.boundingRect(c)
         aspect_ratio = float(w) / h if h != 0 else 0
-        if 250 < area < 2500 and 0.7 < aspect_ratio < 1.3:
+        if 200 < area < 3500 and 0.5 < aspect_ratio < 1.5:
             burbujas.append(c)
+
 
     burbujas = ordenar_contornos(burbujas)
 
-    # Número estimado de columnas según cantidad esperada de preguntas
-    # cada columna puede contener hasta 24 preguntas (filas)
     num_preguntas_esperadas = len(answer_key)
     columnas_detectadas = min(3, max(1, (num_preguntas_esperadas + 23) // 24))
-
 
     columnas = [[] for _ in range(columnas_detectadas)]
     total_w = imagen_recortada.shape[1]
@@ -99,7 +122,6 @@ def extraer_respuestas(imagen_recortada, max_alternativas,answer_key):
         x, _, _, _ = cv2.boundingRect(c)
         col_width = total_w // columnas_detectadas
         col_idx = min(x // col_width, columnas_detectadas - 1)
-
         columnas[col_idx].append(c)
 
     respuestas_columnas = []
@@ -133,7 +155,6 @@ def extraer_respuestas(imagen_recortada, max_alternativas,answer_key):
         respuestas_columnas.append(col_respuestas)
         burbujas_columnas.append(col_burbujas)
 
-    # Recorrer por columnas primero (de arriba hacia abajo, izquierda a derecha)
     respuestas_lineal = []
     burbujas_lineal = []
     num_columnas = len(respuestas_columnas)
@@ -143,9 +164,6 @@ def extraer_respuestas(imagen_recortada, max_alternativas,answer_key):
         for fila_idx in range(len(col_r)):
             respuestas_lineal.append(col_r[fila_idx])
             burbujas_lineal.append(col_b[fila_idx])
-
-    """print(f"Total burbujas detectadas: {len(burbujas)}")
-    print(f"Total preguntas detectadas: {len(respuestas_lineal)}")"""
 
     return respuestas_lineal, burbujas_lineal, imagen_recortada
 
@@ -167,7 +185,7 @@ def procesar_y_evaluar_prueba(imagen, formato, alumno, alternativas, answer_key,
         return {"error": "No se detectó el marco en la imagen."}
 
     recortada = recortar_area(imagen, marco)
-    respuestas, burbujas_pregunta, imagen_eval = extraer_respuestas(recortada, alternativas,answer_key)
+    respuestas, burbujas_pregunta, imagen_eval = extraer_respuestas(recortada, alternativas, answer_key)
 
     for i, fila in enumerate(burbujas_pregunta):
         if i >= len(respuestas):
@@ -176,17 +194,16 @@ def procesar_y_evaluar_prueba(imagen, formato, alumno, alternativas, answer_key,
         correcta = answer_key.get(i, -1)
         for j, contorno in enumerate(fila):
             if seleccionada == -1:
-                color = (0, 255, 255)  # Amarillo: no respondida
+                color = (0, 255, 255)
             elif j == seleccionada and j == correcta:
-                color = (0, 255, 0)    # Verde: correcta
+                color = (0, 255, 0)
             elif j == seleccionada and j != correcta:
-                color = (0, 0, 255)    # Rojo: incorrecta
+                color = (0, 0, 255)
             elif j == correcta:
-                color = (255, 0, 0)    # Azul: correcta no marcada
+                color = (255, 0, 0)
             else:
                 color = (200, 200, 200)
             cv2.drawContours(imagen_eval, [contorno], -1, color, 2)
-
 
     _, imagen_codificada = cv2.imencode('.png', imagen_eval)
     imagen_base64 = base64.b64encode(imagen_codificada).decode('utf-8')
