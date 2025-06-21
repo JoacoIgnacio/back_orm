@@ -1,5 +1,7 @@
-from app import app
-# Agregar esto al final para que Flask pueda detectar 'app'
-if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0")
+from flask import Flask
 
+application = Flask(__name__)
+
+@application.route('/')
+def index():
+    return "✅ ¡Mi app Flask está funcionando!"
