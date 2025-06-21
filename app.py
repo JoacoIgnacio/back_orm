@@ -19,7 +19,7 @@ db = SQLAlchemy(app)
 
 @app.route("/")
 def index():
-    return "✅ Flask conectado correctamente a MySQL"
+    return "✅ Flask conectado correctamente a MySQL ✅ "
 
 @app.route("/db-test")
 def db_test():
