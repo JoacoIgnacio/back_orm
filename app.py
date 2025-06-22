@@ -1,8 +1,10 @@
 import os
+from dotenv import load_dotenv
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
 
+load_dotenv()
 
 application = Flask(__name__)
 
