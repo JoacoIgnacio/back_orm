@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
@@ -32,10 +31,3 @@ def db_test():
 
 if __name__ == "__main__":
     app.run()
-=======
-from app import app
-# Agregar esto al final para que Flask pueda detectar 'app'
-if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0")
-
->>>>>>> parent of 7ad2f19 (Update app.py)
