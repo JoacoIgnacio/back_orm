@@ -2,7 +2,7 @@ import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 
-app = Flask(__name__)
+application = Flask(__name__)
 
 # Leer configuración desde variables de entorno (definidas en cPanel)
 DB_USER = os.environ.get("DB_USER", "root")
@@ -12,16 +12,16 @@ DB_PORT = os.environ.get("DB_PORT", "3306")
 DB_NAME = os.environ.get("DB_NAME", "railway")
 
 # Configurar la conexión a la base de datos
-app.config["SQLALCHEMY_DATABASE_URI"] = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+application.config["SQLALCHEMY_DATABASE_URI"] = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+application.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-db = SQLAlchemy(app)
+db = SQLAlchemy(application)
 
-@app.route("/")
+@application.route("/")
 def index():
     return "✅ Flask conectado correctamente a MySQL ✅ "
 
-@app.route("/db-test")
+@application.route("/db-test")
 def db_test():
     try:
         db.session.execute("SELECT 1")
@@ -30,4 +30,4 @@ def db_test():
         return f"❌ Error: {str(e)}"
 
 if __name__ == "__main__":
-    app.run()
+    application.run()
