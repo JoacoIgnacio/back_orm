@@ -14,19 +14,16 @@ app = Flask(__name__)
 # app.config['DEBUG'] = True
 
 # Registra la blueprint de la API
-app.register_blueprint(users_db_bp)
-app.register_blueprint(asignaturas_db_bp)
-app.register_blueprint(pruebas_db_bp)
-app.register_blueprint(alumnos_db_bp)
-app.register_blueprint(cursos_db_bp)
-app.register_blueprint(scanner_db_bp)
-app.register_blueprint(formato_db_bp)
-app.register_blueprint(auth_bp)
+app.register_blueprint(users_db_bp, url_prefix='/back_orm')
+app.register_blueprint(asignaturas_db_bp, url_prefix='/back_orm')
+app.register_blueprint(pruebas_db_bp, url_prefix='/back_orm')
+app.register_blueprint(alumnos_db_bp, url_prefix='/back_orm')
+app.register_blueprint(cursos_db_bp, url_prefix='/back_orm')
+app.register_blueprint(scanner_db_bp, url_prefix='/back_orm')
+app.register_blueprint(formato_db_bp, url_prefix='/back_orm')
+app.register_blueprint(auth_bp, url_prefix='/back_orm')
 
 
 # Configuración de CORS
 CORS(app)  # Esto permite solicitudes desde cualquier origen
 
-@app.route("/")
-def home():
-    return "✅ Backend Flask desplegado correctamente en Render"
