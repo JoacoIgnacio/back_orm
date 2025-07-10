@@ -7,9 +7,9 @@ from app.controllers.user_controller import (
     eliminar_usuario
 )
 
-users_db_bp = Blueprint('users_db', __name__)
+users_db_bp = Blueprint('users_db', __name__, url_prefix='/users')
 
-@users_db_bp.route('/users', methods=['POST'])
+@users_db_bp.route('/', methods=['POST'])
 def crear_nuevo_usuario():
     try:
         datos_usuario = request.json
@@ -19,7 +19,7 @@ def crear_nuevo_usuario():
         return jsonify({"error": str(err)}), 500
 
 # Ruta para obtener todos los usuarios
-@users_db_bp.route('/users', methods=['GET'])
+@users_db_bp.route('/', methods=['GET'])
 def obtener_todos_los_usuarios():
     try:
         usuarios = obtener_usuarios()
