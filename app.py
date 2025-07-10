@@ -25,7 +25,7 @@ db = SQLAlchemy(application)
 def index():
     return "✅ Flask conectado correctamente a MySQL ✅"
 
-@application.route("/db-test")
+@application.route("z1")
 def db_test():
     try:
         db.session.execute(text("SELECT 1"))
