@@ -1,6 +1,5 @@
 import os
 from dotenv import load_dotenv
-from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
 
@@ -9,7 +8,7 @@ from app import app as application
 
 load_dotenv()
 
-application = Flask(__name__)
+
 
 # Leer configuración desde variables de entorno (definidas en cPanel)
 DB_USER = os.environ.get("DB_USER")
