@@ -8,16 +8,14 @@ from app import app as application
 
 load_dotenv()
 
-
-
-# Leer configuración desde variables de entorno (definidas en cPanel)
+# Leer configuración desde variables de entorno
 DB_USER = os.environ.get("DB_USER")
 DB_PASSWORD = os.environ.get("DB_PASSWORD")
 DB_HOST = os.environ.get("DB_HOST")
 DB_PORT = os.environ.get("DB_PORT", "3306")
 DB_NAME = os.environ.get("DB_NAME")
 
-# Configurar la conexión a la base de datos
+# Configuración de la BD
 application.config["SQLALCHEMY_DATABASE_URI"] = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 application.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -25,9 +23,9 @@ db = SQLAlchemy(application)
 
 @application.route("/")
 def index():
-    return "✅ Flask conectado correctamente a MySQL ✅ "
+    return "✅ Flask conectado correctamente a MySQL ✅"
 
-@application.route("/db-test")
+@application.route("/back_orm/db-test")
 def db_test():
     try:
         db.session.execute(text("SELECT 1"))
@@ -35,3 +33,4 @@ def db_test():
     except Exception as e:
         return f"❌ Error: {str(e)}"
 
+# No pongas application.run() en cPanel
