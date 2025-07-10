@@ -4,6 +4,9 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
 
+# 👇 IMPORTA LA APP YA CONFIGURADA CON BLUEPRINTS
+from app import app as application
+
 load_dotenv()
 
 application = Flask(__name__)
@@ -33,5 +36,3 @@ def db_test():
     except Exception as e:
         return f"❌ Error: {str(e)}"
 
-if __name__ == "__main__":
-    application.run()
