@@ -13,15 +13,23 @@ from app.routes.auth_routes import auth_bp
 
 app = Flask(__name__)
 
-# Registra todos los blueprints bajo el prefijo común /back_orm
-app.register_blueprint(users_db_bp, url_prefix='/back_orm')
-app.register_blueprint(asignaturas_db_bp, url_prefix='/back_orm')
-app.register_blueprint(pruebas_db_bp, url_prefix='/back_orm')
-app.register_blueprint(alumnos_db_bp, url_prefix='/back_orm')
-app.register_blueprint(cursos_db_bp, url_prefix='/back_orm')
-app.register_blueprint(scanner_db_bp, url_prefix='/back_orm')
-app.register_blueprint(formato_db_bp, url_prefix='/back_orm')
-app.register_blueprint(auth_bp, url_prefix='/back_orm')
+# Configuración de la aplicación, si es necesario
+# app.config['DEBUG'] = True
 
-# Habilita CORS para frontend móvil
-CORS(app)
+# Registra la blueprint de la API
+app.register_blueprint(users_db_bp)
+app.register_blueprint(asignaturas_db_bp)
+app.register_blueprint(pruebas_db_bp)
+app.register_blueprint(alumnos_db_bp)
+app.register_blueprint(cursos_db_bp)
+app.register_blueprint(scanner_db_bp)
+app.register_blueprint(formato_db_bp)
+app.register_blueprint(auth_bp)
+
+
+# Configuración de CORS
+CORS(app)  # Esto permite solicitudes desde cualquier origen
+
+@app.route("/")
+def home():
+    return "✅ Backend Flask desplegado correctamente en Render"

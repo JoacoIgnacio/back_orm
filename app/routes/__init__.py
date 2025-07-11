@@ -1,8 +1,12 @@
-from .routes_users import users_db_bp
-from .routes_asignaturas import asignaturas_db_bp
-from .routes_pruebas import pruebas_db_bp
-from .routes_alumnos import alumnos_db_bp
-from .routes_cursos import cursos_db_bp
-from .routes_scanner import scanner_db_bp
-from .routes_formato import formato_db_bp
-from .auth_routes import auth_bp
+from flask import Blueprint
+
+# ...
+
+users_db_bp = Blueprint('users_db', __name__)
+asignaturas_db_bp = Blueprint('asignaturas_db', __name__)
+pruebas_db_bp = Blueprint('pruebas_db', __name__)
+alumnos_db_bp = Blueprint('alumnos_db', __name__)
+cursos_db_bp = Blueprint('cursos_db', __name__)
+scanner_db_bp = Blueprint('scanner_db', __name__)
+formato_db_bp = Blueprint('formato_db', __name__)
+auth_bp = Blueprint('auth', __name__)
