@@ -21,10 +21,6 @@ application.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(application)
 
-@application.route("/")
-def index():
-    return "✅ Flask conectado correctamente a MySQL ✅"
-
 @application.route("/db-test")
 def db_test():
     try:
